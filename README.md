@@ -420,3 +420,396 @@ Overall takeaway:
 * Categorical fields (`priority`, `cluster`, `failed`) show expected distributions and are consistent.
 
 ## 3. Data preparation
+
+### 3.1 Select Data
+
+At this stage, we decide which parts of the dataset will actually be used for modeling.
+Data selection is not only about choosing the right columns (features), but also about filtering the appropriate rows (records).
+
+The goal is to retain data that is:
+
+- Relevant to workload behavior and clustering
+- Sufficient in quality and completeness
+- Technically manageable given memory and computation constraints
+
+Since this project focuses on discovering workload types using resource behavior and runtime characteristics, only features that meaningfully describe workload performance are selected
+
+#### Included Columns
+
+The following columns were selected because they directly contribute to workload behavior analysis, efficiency measurement, or clustering:
+
+Identification Fields (Retained for grouping, not clustering):
+
+* `collection_id`
+* `instance_index`
+* `machine_id`
+* `cluster`
+* `priority`
+
+These help profile and interpret clusters after modeling but are not necessarily used as clustering features.
+
+Time & Runtime Features (Critical):
+
+* `start_time`
+* `end_time`
+
+Used to compute:
+
+* Runtime
+* Scheduling behavior
+* SLA risk indicators
+
+Resource Allocation & Usage (Core Features):
+
+* `assigned_memory`
+* `page_cache_memory`
+* `average_usage`
+* `maximum_usage`
+* `cpu_usage_distribution`
+* `tail_cpu_usage_distribution`
+* `resource_request`
+
+These features describe:
+
+* CPU intensity
+* Memory intensity
+* Usage variability
+* Overprovisioning behavior
+
+These are central to workload profiling.
+
+Reliability & KPI Fields:
+
+* `failed`
+
+Used to simulate SLA risk and analyze workload stability.
+
+
+#### Excluded Columns
+
+The following fields were excluded because they do not contribute meaningfully to clustering or workload behavior modeling:
+
+Administrative / Metadata Fields:
+
+* `Unnamed: 0`
+* `collection_name`
+* `collection_logical_name`
+* `user`
+* `constraint`
+* `start_after_collection_ids`
+* `event`
+
+Reason:
+These fields are descriptive or textual metadata and do not represent quantitative workload behavior.
+
+Low-Level Performance Metrics (Excluded for Simplicity):
+
+* `cycles_per_instruction`
+* `memory_accesses_per_instruction`
+* `sample_rate`
+
+Reason:
+These metrics:
+
+* Contain significant missing values (~31%)
+* Add noise due to hardware-level variability
+* Are not required for workload grouping objectives
+
+They may be considered in future advanced analysis.
+
+Event Type Columns:
+
+* `instance_events_type`
+* `collections_events_type`
+
+Reason:
+These represent lifecycle event codes and are not indicators of workload resource patterns.
+
+#### Row Selection Criteria
+
+In addition to column filtering, we apply row-level filtering:
+
+Remove Invalid Runtime Records:
+
+We exclude rows where:
+
+* `end_time <= start_time`
+* Runtime is zero or negative
+
+Remove Missing Critical Resource Values:
+
+Rows missing:
+
+* `assigned_memory`
+* `average_usage`
+* `maximum_usage`
+
+are removed because clustering depends on these metrics.
+
+
+#### Optional Sampling (Technical Constraint)
+
+Because the dataset contains 405,894 records, sampling may be applied during experimentation to:
+
+* Improve iteration speed
+* Reduce memory load
+* Test model stability
+
+Full dataset is used for final modeling where feasible.
+
+#### Key Insights
+Final Outcome of Data Selection
+
+After applying column and row selection:
+
+* Only behavior-relevant workload features remain
+* Noise from metadata and unused fields is removed
+* Invalid or incomplete records are excluded
+* Dataset becomes modeling-ready
+* Dimensionality is reduced, improving clustering quality
+
+This structured selection ensures that the clustering process focuses purely on workload behavior patterns rather than administrative or irrelevant metadata.
+
+
+Data selection was guided by three principles:
+
+1. Relevance to workload behavior and clustering
+2. Data quality and completeness
+3. Practical computational constraints
+
+The resulting dataset provides a clean, focused representation of workload performance characteristics, suitable for dimensionality reduction and unsupervised clustering.
+
+### 3.2 Clean Data
+
+After selecting relevant columns and records, the next step is to improve data quality to ensure it is suitable for clustering and workload profiling.
+
+Cleaning focuses on:
+* Handling missing values
+* Fixing incorrect data types
+* Removing invalid or inconsistent records
+* Parsing structured fields (JSON strings)
+* Standardizing formats for modeling
+
+The goal is not to “perfect” the data, but to make it reliable and consistent enough for dimensionality reduction and clustering algorithms.
+
+* Cleaned the dataset to make it fully ready for clustering and workload profiling.
+* Focused on fixing small missing values, converting JSON fields to numeric features, standardizing time data, and controlling extreme values.
+
+Missing Values:
+
+* Filled `vertical_scaling` with 0 (assumed no scaling).
+* Replaced missing `scheduler` values with the most common value.
+* Dropped a small number of rows with missing `resource_request`, since it is essential for efficiency analysis.
+
+Resource Usage Conversion:
+
+* Extracted numeric features from JSON fields:
+
+  * `avg_cpu`, `avg_memory`
+  * `max_cpu`, `max_memory`
+  * `req_cpu`, `req_memory`
+* Removed the original JSON columns, leaving a clean numeric dataset.
+
+Time & Runtime:
+
+* Converted timestamps to proper datetime format.
+* Created `runtime_seconds` as a new feature.
+* All runtimes are valid and positive.
+
+Outlier Control:
+
+* Capped extreme values (1st–99th percentile) for key features like CPU, memory, and runtime.
+* This prevents rare extreme workloads from distorting clustering results.
+
+Final Status:
+
+* No missing values in retained fields.
+* All features numeric and consistent.
+* Dataset is clean, stable, and ready for feature engineering and clustering.
+
+### 3.3 Construct Data
+
+
+In this step, we create derived attributes from the cleaned dataset to better capture workload characteristics for clustering and profiling. These new features emphasize resource efficiency, overprovisioning behavior, and usage patterns that directly relate to workload types.
+
+The construction focuses on ratios and efficiency metrics rather than raw values, as these normalized measures are more stable across different scales and better reveal behavioral patterns in distance-based clustering.
+
+#### Derived Attributes Created
+
+Resource Efficiency & Overprovisioning Features:
+
+- `memory_overprovisioning_ratio` = `assigned_memory` / `resource_request`  
+  Measures how much more memory was assigned than requested (values > 1 indicate overprovisioning).
+
+- `avg_cpu_utilization` = `avg_cpu` / `assigned_memory`  
+  CPU utilization relative to assigned resources (captures underutilization).
+
+- `peak_cpu_utilization` = `max_cpu` / `assigned_memory`  
+  Peak CPU demand relative to assigned capacity.
+
+- `memory_utilization_avg` = `avg_memory` / `assigned_memory`  
+  Average memory utilization efficiency.
+
+- `memory_utilization_peak` = `max_memory` / `assigned_memory`  
+  Peak memory utilization efficiency.
+
+Workload Intensity & Variability:
+
+- `cpu_peak_to_avg_ratio` = `max_cpu` / `avg_cpu`  
+  Indicates bursty vs steady CPU workloads (higher values = more bursty).
+
+- `runtime_efficiency` = `runtime_seconds` / `assigned_memory`  
+  Runtime normalized by resource allocation (long-running low-resource jobs vs short high-resource jobs).
+
+Page Cache Dependency:
+
+- `page_cache_ratio` = `page_cache_memory` / `assigned_memory`  
+  Proportion of assigned memory used for caching (IO-intensive workloads tend to have higher values).
+
+These derived attributes transform the raw allocation/usage data into behavioral signals that are more suitable for discovering workload types through clustering.
+
+hese 8 new attributes provide a compact, interpretable representation of:
+- Resource provisioning efficiency (overprovisioning ratios)
+- Utilization patterns (avg vs peak behavior)  
+- Workload burstiness (peak-to-average ratios)
+- IO characteristics (page cache dependency)
+
+The derived dataset now contains both raw measurements and behavioral ratios, enabling clustering algorithms to discover workload types based on actual resource usage patterns rather than just absolute scale.
+
+### 3.4 Integrate Data
+
+Since this project uses a single Google cluster workload dataset, no table merging was needed. All relevant fields-identification, timestamps, resource usage, and failure status-are already co-located in one table per workload instance.
+
+The only "integration" happened within records: parsing JSON strings from `average_usage`, `maximum_usage`, and `resource_request` columns into separate numeric CPU/memory fields (`avg_cpu`, `avg_memory`, etc.). This transformed semi-structured data into a flat, fully numeric format ready for modeling.
+
+**Output:** Single integrated dataset with 121k+ records combining all cleaned, parsed, and derived workload features.
+
+### 3.5 Format Data
+
+No major formatting changes were needed since scikit-learn clustering algorithms accept the current DataFrame structure directly. The dataset is already fully numeric (after JSON parsing) with proper data types.
+
+Minor formatting applied:
+- Reordered columns to group features logically: identification fields first (`collection_id`, `machine_id`, etc.), then time features, then raw resource measurements, then derived efficiency ratios.
+- Randomized row order using `df.sample(frac=1, random_state=42)` to prevent any modeling bias from the original collection sequence.
+- Confirmed all numeric features are `float64` (no strings/integers remaining).
+
+## 4. Modeling
+
+### 4.1 Modeling Techniques
+
+#### Primary Models
+
+HDBSCAN (Main Model)
+
+* Automatically detects clusters of different sizes and densities.
+* Identifies outliers without forcing every workload into a group.
+* No need to predefine the number of clusters.
+* Best suited for discovering natural workload types.
+Use: Primary production model for workload profiling.
+
+DBSCAN (Validation Model)
+
+* Classic density-based clustering.
+* Requires tuning of `eps`, but useful for confirming HDBSCAN results.
+* Also detects noise and outliers.
+Use: Cross-validation of cluster structure.
+
+#### Baseline Models (Sanity Checks)
+
+Single Cluster (KMeans, k=1)
+
+* Assumes all workloads are identical.
+* Used to confirm that real clustering adds value.
+* Real models must clearly outperform this trivial case.
+
+Runtime Quantile Split (5–6 bins)
+
+* Groups workloads by runtime only (short → long).
+* Simple and intuitive benchmark.
+* Real clustering should show better structure than this basic segmentation.
+
+
+#### Assumptions Before Modeling
+
+* No missing values (handled in Clean Data).
+* All features numeric and formatted.
+* Large enough sample size (~121k workloads).
+* Feature scaling required → apply `StandardScaler`.
+
+
+#### Workflow
+
+1. Scale features
+2. Fit HDBSCAN and evaluate results
+3. Fit DBSCAN for validation
+4. Compare both against baseline models
+5. Select the best-performing technique
+
+HDBSCAN is used as the primary technique, validated against DBSCAN and simple baselines to ensure the discovered workload types are stable, meaningful, and operationally useful.
+
+### 4.2 Test Design
+
+
+Because this is an unsupervised clustering project, a train/test split is not required. Instead, we run all models on the full dataset (~121k workloads) and validate whether the discovered clusters are high quality, stable, and operationally meaningful.
+
+
+#### Model Validation
+
+**Quality Check - Are clusters well formed?**
+
+* Silhouette Score → target > 0.4 (good), > 0.6 (excellent)
+* Davies-Bouldin Index → target < 1.0
+* Dunn Index → target > 0.5
+* Calinski-Harabasz Score → maximize
+* WCSS (Within-Cluster Sum of Squares) → assess compactness
+
+Most importantly, real models must outperform the baselines:
+
+* Single Cluster baseline (expected silhouette ~0.0)
+* Runtime Quantile baseline (expected silhouette ~0.2-0.3)
+
+Success rule: Real clustering must improve silhouette by at least +0.3 over the Single Cluster baseline.
+
+**Stability Check - Are results repeatable?**
+
+To ensure robustness:
+
+* Create 10 random 80% subsets (~97k records each)
+* Re-run HDBSCAN and DBSCAN
+* Compare runs using Adjusted Rand Index (ARI)
+
+Target: Mean ARI > 0.8 → stable workload types.
+
+For HDBSCAN, we also check:
+
+* Cophenetic Correlation (> 0.7) to confirm hierarchical structure quality.
+
+**Structural & Balance Checks**
+
+* No cluster larger than 40% of the dataset
+* No cluster smaller than 1%
+* Reasonable cluster tightness and separation
+
+This ensures practical and balanced profiling.
+
+**Business Validation**
+
+Beyond metrics, clusters must make real-world sense. For that, analyze:
+
+* Runtime patterns
+* CPU and memory usage behavior
+* Failure rate differences (`failed`)
+
+Clusters should provide insights relevant to SLA monitoring and capacity planning.
+
+
+#### Final Success Criteria
+
+The model is considered successful if it:
+
+* Clearly beats both baselines
+* Achieves Silhouette > 0.4
+* Shows ARI stability > 0.8
+* Produces balanced, interpretable workload types
+
+In short, the clusters must be statistically strong, repeatable, and business-relevant before being approved for production workload profiling.
