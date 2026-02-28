@@ -693,6 +693,21 @@ Minor formatting applied:
 - Randomized row order using `df.sample(frac=1, random_state=42)` to prevent any modeling bias from the original collection sequence.
 - Confirmed all numeric features are `float64` (no strings/integers remaining).
 
+Choose which columns are features for clustering
+
+For unsupervised clustering:
+
+* Exclude pure ID fields (collection_id, instance_index, machine_id, cluster, priority).
+* Exclude raw datetimes (start_time, end_time), but keep runtime_seconds.
+* Exclude the target-like field failed (used later for profiling, not clustering).
+
+Scale the features
+
+Clustering methods (HDBSCAN, DBSCAN, KMeans) assume distances in feature space are meaningful. To avoid any one feature dominating because of its scale (e.g., seconds vs ratios), standardization is done.
+
+- `X` = raw numeric features from `df_formatted`.  
+- `X_scaled` = standardized version (mean 0, variance 1), used in `evaluate_clustering_model`.
+
 ## 4. Modeling
 
 ### 4.1 Modeling Techniques
@@ -813,3 +828,221 @@ The model is considered successful if it:
 * Produces balanced, interpretable workload types
 
 In short, the clusters must be statistically strong, repeatable, and business-relevant before being approved for production workload profiling.
+
+### 4.3 Build Model
+
+#### Generic Functions
+
+**Dunn Index Function** 
+
+This function computes the Dunn Index, a metric to evaluate clustering quality.
+
+It:
+
+* Ignores noise points (`-1` labels).
+* Checks early exit: returns NaN if fewer than 2 clusters.
+* For large datasets (>10k samples), it skips the expensive calculation and approximates using the silhouette score.
+* Computes:
+
+  * Intra-cluster distances: maximum distance within each cluster (compactness).
+  * Inter-cluster distances: minimum distance between clusters (separation).
+* Returns the Dunn Index: min inter-cluster distance ÷ max intra-cluster distance.
+
+Higher values : well-separated, tight clusters.
+
+**Cluster size distribution statistics**
+
+This function summarizes the cluster size distribution.
+
+* Removes noise points (label `-1`).
+* If no valid clusters remain, it returns zeros/NaN.
+* Counts how many clusters exist.
+* Calculates:
+  - Total number of clusters
+  - Largest cluster size (as % of data)
+  - Smallest cluster size (as % of data)
+
+Overall, it helps check whether clusters are balanced or if one cluster dominates the dataset.
+
+**Generic Visualization Function**
+
+This function generates a complete 2×2 visual dashboard to evaluate clustering results and saves it as PNG and PDF.
+
+It shows:
+
+* Cluster size distribution (excluding noise) with counts and percentages.
+* Clustering quality metrics (Silhouette, DB, Dunn, etc.) in a bar chart.
+* PCA 2D projection of the data, colored by cluster, plus printed PCA variance and top feature loadings.
+* Silhouette score distribution with mean score and quality indicator (Fair / Good / Excellent).
+
+It also prints PCA diagnostics, displays noise percentage, handles edge cases (single cluster or all noise), and saves the final plot automatically.
+
+In short, it turns clustering results into a clear, executive-ready visual and analytical summary.
+
+**Generic Clustering Evaluation Function**
+
+This function is a complete clustering evaluation wrapper.
+
+It:
+
+* Fits the clustering model (or uses precomputed labels for baselines).
+* Measures fit time.
+* Counts clusters and noise points.
+* Computes quality metrics (Silhouette, Davies–Bouldin, Calinski–Harabasz, Dunn) when valid.
+* Calculates cluster size statistics (largest and smallest cluster %).
+* Stores all results in a structured dictionary for comparison.
+* Optionally generates the visualization dashboard.
+
+In short, it standardizes how every clustering model in the project is evaluated, compared, and reported.
+
+#### Single Cluster Baseline
+
+The single-cluster baseline behaves exactly as expected and serves as a “worst-case” reference, not a useful clustering solution.
+
+- The model placed all 121,535 workloads into one cluster, with no noise points. This makes the largest and smallest cluster both 100%, confirming there is no segmentation at all in this baseline.
+
+- Because there is only one cluster, all clustering quality metrics (silhouette, Davies-Bouldin, Dunn, etc.) are undefined or skipped, which is correct and highlights that this model does not provide any structure to evaluate.
+
+- The PCA summary simply tells you about overall variance structure of the dataset, not clustering quality:
+
+  - PC1 and PC2 together explain about 54% of the variance, so a 2D projection captures over half of the data’s variability.
+  - The listed “Feature i” loadings show which features drive PC1 and PC2, but in a single-cluster baseline they only describe dominant directions of variation, not distinct groups.
+
+In short, this baseline confirms that “everything is one workload type” is trivial and uninformative; any meaningful clustering model only needs to produce more than one coherent cluster with valid metrics to improve on this baseline.
+
+#### Runtime Quantile Baseline
+
+The Runtime Quantile baseline provides a modest but credible reference, representing the hypothesis "workload types = runtime length buckets."
+
+Key observations:
+- Created 3 clusters (not 6 due to `duplicates='drop'` handling ties in quantiles), with a highly imbalanced distribution: 66.5% in the largest cluster (80,795 workloads), 15.4% in the smallest (21,979). This shows runtime data has natural concentration points.
+
+- Silhouette score of 0.1283 is low but positive, indicating weak but real structure - runtime quantiles capture *some* separation in the feature space.
+- Davies-Bouldin = 2.70 (high/poor) confirms clusters are not well-separated; Dunn Index approximation (0.103) is also weak.
+
+- Calinski-Harabasz = 8,794 is decent but uninformative without comparison.
+- PCA structure identical to single-cluster baseline (as expected - same data), showing runtime quantiles provide some segmentation but don't align perfectly with the dominant variance directions (PC1/PC2).
+
+This baseline beats the single-cluster dummy (0.128 > undefined) by creating runtime-based groups, but its imbalanced clusters and low silhouette (0.13) set a low bar. Real models (HDBSCAN/DBSCAN) should target silhouette >0.3 and more balanced cluster sizes to show they capture richer resource behavior patterns beyond just runtime length.
+
+### 4.4 Assess Model
+
+#### Generic functions for comparison
+
+**Get Summary Table**
+
+This function aggregates results from the `all_results` list into a formatted Pandas DataFrame for easy model comparison.
+
+* Consolidates Metrics: Gathers Silhouette, DB Index, and CH Score into one view.
+* Auto-Formatting: Converts raw decimals into readable percentages ($1.0\%$) and rounded strings ($3$ decimals).
+* Data Safety: Uses `.get()` to handle missing metrics gracefully with `NaN`.
+* Dual Output: Prints an ASCII table for immediate review and returns a DataFrame for further analysis.
+
+**Plotting clustering comparison**
+
+This function generates a grouped bar chart to visually compare key clustering metrics across different models.
+
+* Multi-Metric Visualization: Plots Silhouette, DB Index, and Noise % side-by-side for each model.
+* Data Cleaning: Automatically converts formatted table strings (like "85%") back into numeric floats for accurate plotting.
+* Smart Labeling: Includes logic to display "NaN" in red on the baseline if a metric is missing, ensuring no data gaps are ignored.
+* Dynamic Scaling: Automatically adjusts bar widths and x-axis ticks based on the number of models and metrics provided.
+
+#### Assessing models
+
+ummary table shows both baselines evaluated successfully, with clear quality gap:
+
+KMeans Single Cluster (1 cluster):
+- No metrics (all NaN) as expected for trivial baseline
+- 100% max cluster confirms no segmentation
+
+Runtime Quantile Baseline (3 clusters):
+- Silhouette 0.128 - weak separation, but better than nothing
+- DB Index 2.70 - poor cluster quality 
+- 66.5% max cluster - highly imbalanced
+- Valid metrics confirm it provides minimal structure
+
+Key takeaway: Runtime baseline sets a low but realistic bar (silhouette ~0.13). Any proper model must:
+1. Beat silhouette > 0.20 
+2. Lower DB Index < 2.0
+3. More balanced clusters (<40% max size)
+
+Ready for HDBSCAN/DBSCAN - they should substantially outperform these baselines to justify density-based clustering over simple runtime bucketing.
+
+## 5. Evaluation
+
+### 5.1 Evaluate results
+
+At this stage, we have only evaluated the baseline models. These serve as reference points, not final solutions. Based on the current results, the business objectives have not yet been met.
+
+The main goal was to discover meaningful workload types based on CPU, memory, and runtime behavior, and then use those types to support capacity planning and SLA risk profiling.
+
+Here’s what is found:
+
+* Single Cluster Baseline
+  This model grouped everything into one cluster.
+  It provides no segmentation, no insight, and no business value.
+  It simply confirms the worst-case scenario: treating all workloads as identical.
+
+* Runtime Quantile Baseline
+  This split workloads based only on runtime.
+  While it produced three clusters, they were highly uneven, with about 66% of workloads in one group.
+  It captures some structure (Silhouette = 0.128), but separation is weak and resource behavior (CPU/memory) is ignored.
+
+In short, neither baseline meets the objectives of discovering meaningful workload types or enabling actionable resource profiling.
+
+#### Key Observations
+
+1. Data Quality is Strong
+
+    * 121,535 clean records available
+    * All resource ratios successfully computed
+    * PCA shows 54% variance explained by first two components
+    This confirms the dataset is suitable for clustering.
+
+2. Runtime Alone is Not Enough
+
+The quantile split collapsed into only three clusters instead of six due to skewed runtime distribution.
+Most workloads fall into a single bin, which explains the imbalance.
+
+This clearly shows that runtime by itself is not sufficient for identifying workload types.
+
+3. Feature Engineering is Ready
+
+Derived metrics like overprovisioning ratios and utilization are stable and usable.
+Special cases (e.g., zero-memory jobs) were handled properly.
+
+The foundation is solid, we now need stronger clustering models.
+
+At this stage:
+
+* No meaningful workload types discovered yet
+* No actionable segmentation for overprovisioning analysis
+* No SLA risk profiling possible
+* Baselines confirm the problem is real but unsolved
+
+The runtime baseline gives us a minimum benchmark (Silhouette = 0.128). Any serious clustering model must clearly outperform this.
+
+#### What This Means
+
+The project is in progress, not complete.
+
+We have:
+
+* Established baselines
+* Validated data quality
+* Confirmed runtime segmentation is insufficient
+
+What remains:
+
+* Run HDBSCAN and DBSCAN on the full feature set
+* Aim for silhouette > 0.3
+* Achieve more balanced clusters (<40% max cluster share)
+* Profile clusters using CPU, memory, overprovisioning, and failure rates
+
+#### Clear Next Step
+
+Move forward to advanced density-based clustering (Phase 4.3–4.4).
+
+If HDBSCAN produces stable, balanced clusters with stronger separation, we can begin real workload profiling and capacity planning analysis.
+
+For now, the baselines show that the challenge is valid, but meaningful workload discovery requires more sophisticated modeling.
