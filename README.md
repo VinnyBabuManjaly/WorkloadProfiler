@@ -12,6 +12,8 @@ Ultimately, this approach enhances resource utilization, reduces overprovisionin
 
 The full analysis and implementation is available in the **[Jupyter Notebook: Workload_Profiler.ipynb](./Workload_Profiler.ipynb)**, which delivers actionable insights.
 
+ The final report is available at **[Workload Profiler Report](https://vinnybabumanjaly.github.io/WorkloadProfiler/)**.
+
 ## 1 Business understanding
 
 ### 1.1 Business Objectives
