@@ -10,6 +10,8 @@ The primary objective is to provide actionable insights for infrastructure and n
 
 Ultimately, this approach enhances resource utilization, reduces overprovisioning, mitigates performance bottlenecks, and supports more intelligent, behavior-aware cluster management.
 
+The full analysis and implementation is available in the **[Jupyter Notebook: Workload_Profiler.ipynb](./Workload_Profiler.ipynb)**, which delivers actionable insights.
+
 ## 1 Business understanding
 
 ### 1.1 Business Objectives
@@ -1046,3 +1048,31 @@ Move forward to advanced density-based clustering (Phase 4.3–4.4).
 If HDBSCAN produces stable, balanced clusters with stronger separation, we can begin real workload profiling and capacity planning analysis.
 
 For now, the baselines show that the challenge is valid, but meaningful workload discovery requires more sophisticated modeling.
+
+### 5.2 Review Process
+
+TODO
+
+### 5.3 Next Steps
+
+TODO
+
+## 6. Deployment
+
+TODO
+
+### 6.1 Deployment Plan
+
+TODO
+
+### 6.2 Monitoring and Maintenance Plan
+
+TODO
+
+### 6.3 Final Report
+
+TODO
+
+### 6.4 Review Project
+
+TODO
