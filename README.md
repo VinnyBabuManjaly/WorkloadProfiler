@@ -159,7 +159,7 @@ The project will be considered successful if:
 * Results are stable across sampling or parameter changes
 * The identified workload groups translate into actionable operational insights
 
-Ultimately, success means the technical outputs (clusters and metrics) are reliable, explainable, and useful for decision-making — not just mathematically correct.
+Ultimately, success means the technical outputs (clusters and metrics) are reliable, explainable, and useful for decision-making - not just mathematically correct.
 
 ### 1.4 Project Plan
 
