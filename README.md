@@ -910,7 +910,7 @@ The single-cluster baseline behaves exactly as expected and serves as a “worst
 - The PCA summary simply tells you about overall variance structure of the dataset, not clustering quality:
 
   - PC1 and PC2 together explain about 54% of the variance, so a 2D projection captures over half of the data’s variability.
-  - The listed “Feature i” loadings show which features drive PC1 and PC2, but in a single-cluster baseline they only describe dominant directions of variation, not distinct groups.
+  - The listed feature loadings in PCA show which features drive PC1 and PC2, but in a single-cluster baseline they only describe dominant directions of variation, not distinct groups.
 
 In short, this baseline confirms that “everything is one workload type” is trivial and uninformative; any meaningful clustering model only needs to produce more than one coherent cluster with valid metrics to improve on this baseline.
 
