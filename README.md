@@ -339,12 +339,15 @@ In this step, we dive deeper into the dataset to uncover patterns, distributions
 * Total workloads: 405,894
 * Failed workloads: 92,678 (~22.8% failure rate)
 * Clusters identified: 8 distinct workload groups
+![Workload Priority Distribution and Workload Failures](plots/priority_level.png)
 
 Runtime (seconds) insights:
 
 * Most workloads are short, with the median runtime at 300 seconds (5 minutes).
 * 25% of workloads run less than 41 seconds, and 75% run 300 seconds or less, indicating a large concentration of very short tasks.
 * Maximum runtime is capped at 300 seconds, suggesting possible system-imposed limits or sampling constraints.
+
+![Workload Runtime Distribution (Seconds)](plots/workload_runtime_distribution.png)
 
 CPU usage:
 
@@ -358,16 +361,24 @@ Memory usage:
 * 75% of workloads use less than 0.0067, but the highest memory-consuming task uses 0.286.
 * Most workloads are memory-light, with only a few memory-intensive tasks.
 
+![Average CPU Usage Distribution and Assigned Memory Distribution](plots/average_cpu_and_assigned_memory_distribution.png)
+
+![CPU vs Memory Usage by Failure Status (Sampled)](plots/cpu_memory_usage_by_failure_status.png)
+
 Priority levels:
 
 * Workloads are highly varied across priority levels, with some clusters like `103` and `360` having tens of thousands of workloads.
 * Lower-numbered priorities (0, 25) have relatively few workloads, while mid-range priorities dominate.
 * Indicates that the system schedules a mix of high-priority and batch workloads.
 
+![Runtime Distribution Across Priority Levels](plots/runtime_distribution_across_priority_levels.png)
+
 Cluster distribution:
 
 * Workloads are fairly evenly distributed across 8 clusters, each ranging between ~42k and ~59k workloads.
 * Suggests a good separation of workload types for clustering and behavior profiling.
+
+![Workload Cluster Distribution (Seconds)](plots/workload_cluster_distribution.png)
 
 Overall takeaway:
 
@@ -914,6 +925,8 @@ The single-cluster baseline behaves exactly as expected and serves as a “worst
 
 In short, this baseline confirms that “everything is one workload type” is trivial and uninformative; any meaningful clustering model only needs to produce more than one coherent cluster with valid metrics to improve on this baseline.
 
+![Single Cluster Baseline Details](plots/clustering_eval_kmeans_baseline.png)
+
 #### Runtime Quantile Baseline
 
 The Runtime Quantile baseline provides a modest but credible reference, representing the hypothesis "workload types = runtime length buckets."
@@ -928,6 +941,8 @@ Key observations:
 - PCA structure identical to single-cluster baseline (as expected - same data), showing runtime quantiles provide some segmentation but don't align perfectly with the dominant variance directions (PC1/PC2).
 
 This baseline beats the single-cluster dummy (0.128 > undefined) by creating runtime-based groups, but its imbalanced clusters and low silhouette (0.13) set a low bar. Real models (HDBSCAN/DBSCAN) should target silhouette >0.3 and more balanced cluster sizes to show they capture richer resource behavior patterns beyond just runtime length.
+
+![Runtime Quantile Baseline Details](plots/clustering_eval_runtime_baseline.png)
 
 ### 4.4 Assess Model
 
