@@ -88,13 +88,13 @@ st.title("🎯 Workload Classifier")
 st.markdown(
     "Describe a workload using its resource characteristics. "
     "The classifier scales the inputs, applies the trained KMeans model, "
-    "and identifies which of the 4 archetypes best matches — along with "
+    "and identifies which of the 4 archetypes best matches - along with "
     "concrete infrastructure recommendations."
 )
 st.info(
     "**Note on CPU features:** All CPU-related features (`avg_cpu`, `max_cpu`, `req_cpu`, "
     "utilisation ratios) are set to zero automatically. Analysis confirmed these carry no "
-    "discriminative signal in the Google Borg 2019 trace — memory and runtime drive all classification.",
+    "discriminative signal in the Google Borg 2019 trace - memory and runtime drive all classification.",
     icon="ℹ️",
 )
 
@@ -194,7 +194,7 @@ if st.button("🔍  Classify Workload", type="primary", width='stretch'):
     scaled = scaler.transform(fv)
     g      = int(kmeans.predict(scaled)[0])
 
-    st.success(f"**Classified as: {EMOJIS[g]} Group {g} — {NAMES[g]}** &nbsp;|&nbsp; Failure rate: {FAILURE_RATE[g]}%")
+    st.success(f"**Classified as: {EMOJIS[g]} Group {g} - {NAMES[g]}** &nbsp;|&nbsp; Failure rate: {FAILURE_RATE[g]}%")
 
     # Recommendation boxes
     recs = RECOMMENDATIONS[g]

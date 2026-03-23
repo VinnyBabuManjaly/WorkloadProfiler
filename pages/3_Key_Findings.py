@@ -19,7 +19,7 @@ profiles, mean_profile = load_data()
 # ── Page header ────────────────────────────────────────────────────────────────
 st.title("📊 Key Findings")
 st.markdown(
-    "Business-level insights derived from the 4 discovered workload archetypes — "
+    "Business-level insights derived from the 4 discovered workload archetypes - "
     "including novel findings beyond the original project objectives."
 )
 
@@ -28,7 +28,7 @@ st.divider()
 # ── Failure rate gradient ──────────────────────────────────────────────────────
 st.subheader("Failure Rate Gradient Across Archetypes")
 st.caption(
-    "The failure rate decreases monotonically from Group 0 to Group 3 — "
+    "The failure rate decreases monotonically from Group 0 to Group 3 - "
     "a clear risk tier structure that maps directly to infrastructure priorities."
 )
 
@@ -52,10 +52,10 @@ st.plotly_chart(fig1, width='stretch')
 st.divider()
 
 # ── Feature heatmap ────────────────────────────────────────────────────────────
-st.subheader("Feature Profile Heatmap — All Archetypes")
+st.subheader("Feature Profile Heatmap - All Archetypes")
 st.caption(
     "Colour shows relative intensity per feature (green = high, red = low). "
-    "CPU features are excluded — confirmed zero discriminative signal across all groups."
+    "CPU features are excluded - confirmed zero discriminative signal across all groups."
 )
 
 # Exclude zero-signal CPU columns
@@ -84,14 +84,14 @@ with col1:
     st.error(
         "**🔇 CPU is not a workload differentiator in Google Borg 2019**\n\n"
         "All six CPU-related features show zero discriminative signal across all four archetypes. "
-        "Memory is the sole primary resource dimension — a structurally important finding for any "
+        "Memory is the sole primary resource dimension - a structurally important finding for any "
         "future CPU-based autoscaling or scheduling model on this dataset."
     )
     st.warning(
         "**📦 Over-provisioning does not reduce failures**\n\n"
         "Group 0 is simultaneously the most over-provisioned archetype (below-average memory "
         "utilisation despite long runtimes) and carries the highest failure rate (31.4%). "
-        "Resource slack is not preventing failures — structural causes dominate. "
+        "Resource slack is not preventing failures - structural causes dominate. "
         "More memory will not fix this group."
     )
 with col2:
@@ -99,7 +99,7 @@ with col2:
         "**💎 The rarest workloads are the most reliable**\n\n"
         "Group 3 (only 1.9% of workloads) consumes the most memory (+5.8 SD above the dataset mean) "
         "yet has the lowest failure rate (3.3%). The most resource-expensive workloads are also the "
-        "most carefully managed — a strong argument for dedicated infrastructure investment in their placement."
+        "most carefully managed - a strong argument for dedicated infrastructure investment in their placement."
     )
     st.info(
         "**📐 Memory scale is the primary axis of workload variation**\n\n"
@@ -116,7 +116,7 @@ st.subheader("Infrastructure Recommendations per Archetype")
 
 for g in range(4):
     with st.expander(
-        f"{EMOJIS[g]} Group {g} — {NAMES[g]}  "
+        f"{EMOJIS[g]} Group {g} - {NAMES[g]}  "
         f"({SIZE_PCT[g]}% of workloads · {FAILURE_RATE[g]}% failure rate · {N_MICRO[g]} micro-clusters)"
     ):
         rc1, rc2, rc3 = st.columns(3)

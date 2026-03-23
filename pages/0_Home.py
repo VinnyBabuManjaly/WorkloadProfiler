@@ -4,22 +4,48 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils import COLORS, EMOJIS, NAMES, DESCRIPTIONS, SIZE_PCT, FAILURE_RATE, N_MICRO
 
 st.title("⚙️ Workload Profiler")
+st.caption("Unsupervised archetype discovery on Google Borg 2019 cluster trace data")
+
+
 st.markdown(
-    "An unsupervised clustering analysis of **405,894 workload instances** from the "
-    "Google Borg 2019 cluster trace — profiling distinct resource-usage archetypes to "
-    "inform scheduling, autoscaling, and infrastructure allocation strategies."
+    "Google runs hundreds of thousands of computing tasks every second. "
+    "This project analyses **405,894 real tasks** from Google's internal systems and uses machine learning "
+    "to automatically group them into **4 distinct types** based on how they use memory and time - "
+    "so engineers know exactly how to allocate resources, reduce failures, and cut waste."
 )
 
 st.divider()
 
 # ── Model headline metrics ──────────────────────────────────────────────────
-st.subheader("Approved Model — HDBSCAN (mcs=50, ms=10)")
+st.subheader("Approved Model - HDBSCAN (mcs=50, ms=10)")
 m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("Silhouette Score",  "0.874",  help="Target > 0.6 — Excellent")
-m2.metric("Davies-Bouldin",    "0.488",  help="Target < 1.0 — Excellent")
-m3.metric("Micro-Clusters",    "617",    help="Natural density-based patterns")
-m4.metric("Macro ARI",         "0.9975", help="Stability across 5 × 80% subsets")
-m5.metric("Noise Share",       "12.6%",  help="Genuine outliers, not mislabels")
+m1.metric("Silhouette Score",  "0.874",  help=(
+    "Measures how similar each workload is to its own cluster versus neighbouring clusters. "
+    "Range: -1 (worst) to 1 (best). "
+    "Above 0.6 is considered Excellent. Score of 0.874 indicates tight, well-separated clusters."
+))
+m2.metric("Davies-Bouldin",    "0.488",  help=(
+    "Measures average similarity between each cluster and its most similar neighbour. "
+    "Lower is better - a low score means clusters are compact and far apart. "
+    "Below 1.0 is Excellent. Score of 0.488 indicates strong cluster separation."
+))
+m3.metric("Micro-Clusters",    "617",    help=(
+    "Number of fine-grained density-based patterns discovered by HDBSCAN before macro-grouping. "
+    "Each micro-cluster represents a distinct workload behaviour pattern. "
+    "These 617 patterns are then collapsed into 4 macro archetypes via KMeans nearest-centroid assignment."
+))
+m4.metric("Macro ARI",         "0.9975", help=(
+    "Adjusted Rand Index - measures stability of the 4-archetype grouping across repeated runs. "
+    "Range: 0 (random) to 1 (perfect agreement). "
+    "Computed by re-running the full pipeline 5 times on random 80% subsets. "
+    "Score of 0.9975 confirms production-grade stability."
+))
+m5.metric("Noise Share",       "12.6%",  help=(
+    "Percentage of workloads HDBSCAN classified as noise - too dissimilar to belong to any cluster. "
+    "These are genuine outliers, not mislabels. "
+    "Noise points are still assigned to the nearest macro archetype for business recommendations, "
+    "but are excluded from cluster quality metrics."
+))
 
 st.divider()
 
@@ -70,7 +96,7 @@ with kf2:
     )
     st.info(
         "**Memory scale is the primary axis of variation.** PC1 (33% of variance) is driven "
-        "entirely by memory features — workload typing in Borg is a memory-scale problem."
+        "entirely by memory features - workload typing in Borg is a memory-scale problem."
     )
 
 st.divider()

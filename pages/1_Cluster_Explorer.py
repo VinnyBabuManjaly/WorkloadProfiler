@@ -18,9 +18,9 @@ def load_data():
 pca_df, profiles, mean_profile = load_data()
 
 pca_df["Archetype"] = pca_df["macro_cluster"].map(
-    lambda g: f"Group {g} — {NAMES[g]}"
+    lambda g: f"Group {g} - {NAMES[g]}"
 )
-color_map = {f"Group {g} — {NAMES[g]}": COLORS[g] for g in range(4)}
+color_map = {f"Group {g} - {NAMES[g]}": COLORS[g] for g in range(4)}
 
 # ── Page header ────────────────────────────────────────────────────────────────
 st.title("🔍 Cluster Explorer")
@@ -30,7 +30,7 @@ st.markdown(
 )
 
 # ── PCA scatter ────────────────────────────────────────────────────────────────
-st.subheader("PCA Projection — 10,000 Sampled Workloads")
+st.subheader("PCA Projection - 10,000 Sampled Workloads")
 st.caption(
     "PC1 captures memory scale (33% of variance). "
     "PC2 captures utilisation efficiency (21%). "
@@ -44,8 +44,8 @@ fig = px.scatter(
     opacity=0.35,
     height=520,
     labels={
-        "PC1": "PC1 — Memory Scale (33% variance)",
-        "PC2": "PC2 — Utilisation Efficiency (21% variance)",
+        "PC1": "PC1 - Memory Scale (33% variance)",
+        "PC2": "PC2 - Utilisation Efficiency (21% variance)",
     },
 )
 fig.update_traces(marker=dict(size=3))
@@ -62,7 +62,7 @@ st.divider()
 
 # ── Archetype drill-down ───────────────────────────────────────────────────────
 st.subheader("Archetype Profile")
-options = [f"Group {g} — {EMOJIS[g]} {NAMES[g]}" for g in range(4)]
+options = [f"Group {g} - {EMOJIS[g]} {NAMES[g]}" for g in range(4)]
 selected = st.selectbox("Select an archetype:", options)
 g = int(selected.split(" ")[1])
 
@@ -74,7 +74,7 @@ m2.metric("Failure Rate",   f"{profiles.loc[g, 'failure_rate_pct']}%")
 m3.metric("Micro-Clusters", int(profiles.loc[g, 'n_micro_clusters']))
 m4.metric("Noise Share",    f"{profiles.loc[g, 'noise_pct']}%")
 
-st.markdown(f"**Feature profile for Group {g} — {NAMES[g]}**")
+st.markdown(f"**Feature profile for Group {g} - {NAMES[g]}**")
 st.caption(
     "Bars show mean standardised feature value (z-score). "
     "Positive = above dataset average. Negative = below. "
@@ -99,7 +99,7 @@ fig2.update_layout(
     height=420,
     xaxis_title="Mean Standardised Value (z-score)",
     yaxis_title="",
-    title=f"Group {g} — {NAMES[g]}",
+    title=f"Group {g} - {NAMES[g]}",
     margin=dict(l=180, r=80, t=40, b=30),
     xaxis=dict(zeroline=True, zerolinecolor="#555", zerolinewidth=1),
 )
@@ -107,7 +107,7 @@ st.plotly_chart(fig2, width='stretch')
 
 # ── Side-by-side group comparison ─────────────────────────────────────────────
 st.divider()
-st.subheader("All Archetypes — Size and Failure Rate")
+st.subheader("All Archetypes - Size and Failure Rate")
 comp_col1, comp_col2 = st.columns(2)
 
 with comp_col1:
