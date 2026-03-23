@@ -7,7 +7,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils import COLORS, EMOJIS, NAMES, RECOMMENDATIONS, FAILURE_RATE
 
-st.set_page_config(page_title="Workload Classifier", page_icon="🎯", layout="wide")
 
 # ── Model loading ──────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -46,7 +45,7 @@ DEFAULTS = {
     "req_memory":        0.010,
     "avg_memory":        0.005,
     "max_memory":        0.010,
-    "page_cache_memory": 0.001,
+    "page_cache_memory": 0.0,
     "runtime_seconds":   0.500,
 }
 
@@ -106,13 +105,22 @@ preset_cols = st.columns(4)
 for g, col in enumerate(preset_cols):
     if col.button(
         f"{EMOJIS[g]} Group {g}\n{NAMES[g]}",
-        use_container_width=True,
+        width='stretch',
         key=f"btn_{g}",
     ):
         row = examples.get(g, {})
+        SLIDER_BOUNDS = {
+            "assigned_memory":   (0.0001, 0.99),
+            "req_memory":        (0.0001, 0.99),
+            "avg_memory":        (0.0001, 0.99),
+            "max_memory":        (0.0001, 0.99),
+            "page_cache_memory": (0.0,    0.50),
+            "runtime_seconds":   (0.0001, 1.0),
+        }
         for k in INPUT_KEYS:
             if k in row and pd.notna(row[k]):
-                st.session_state[k] = float(row[k])
+                lo, hi = SLIDER_BOUNDS[k]
+                st.session_state[k] = float(np.clip(float(row[k]), lo, hi))
         st.rerun()
 
 st.divider()
@@ -180,7 +188,7 @@ with st.expander("Derived features (computed automatically)"):
 st.divider()
 
 # ── Classify ───────────────────────────────────────────────────────────────────
-if st.button("🔍  Classify Workload", type="primary", use_container_width=True):
+if st.button("🔍  Classify Workload", type="primary", width='stretch'):
     vals = {k: st.session_state[k] for k in INPUT_KEYS}
     fv     = build_feature_vector(vals, feature_cols)
     scaled = scaler.transform(fv)
@@ -232,4 +240,4 @@ if st.button("🔍  Classify Workload", type="primary", use_container_width=True
         margin=dict(t=20, b=80),
         legend=dict(orientation="h", y=1.05),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')

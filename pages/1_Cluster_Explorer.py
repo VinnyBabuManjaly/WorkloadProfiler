@@ -6,7 +6,6 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils import COLORS, EMOJIS, NAMES
 
-st.set_page_config(page_title="Cluster Explorer", page_icon="🔍", layout="wide")
 
 # ── Data loading ───────────────────────────────────────────────────────────────
 @st.cache_data
@@ -57,7 +56,7 @@ fig.update_layout(
     ),
     margin=dict(t=40, b=20),
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width='stretch')
 
 st.divider()
 
@@ -104,7 +103,7 @@ fig2.update_layout(
     margin=dict(l=180, r=80, t=40, b=30),
     xaxis=dict(zeroline=True, zerolinecolor="#555", zerolinewidth=1),
 )
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig2, width='stretch')
 
 # ── Side-by-side group comparison ─────────────────────────────────────────────
 st.divider()
@@ -124,7 +123,7 @@ with comp_col1:
         height=320, margin=dict(t=40, b=20),
         yaxis=dict(range=[0, 55]),
     )
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width='stretch')
 
 with comp_col2:
     fig4 = go.Figure(go.Bar(
@@ -139,4 +138,4 @@ with comp_col2:
         height=320, margin=dict(t=40, b=20),
         yaxis=dict(range=[0, 42]),
     )
-    st.plotly_chart(fig4, use_container_width=True)
+    st.plotly_chart(fig4, width='stretch')

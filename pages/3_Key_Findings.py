@@ -6,7 +6,6 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils import COLORS, EMOJIS, NAMES, RECOMMENDATIONS, SIZE_PCT, FAILURE_RATE, N_MICRO
 
-st.set_page_config(page_title="Key Findings", page_icon="📊", layout="wide")
 
 # ── Data loading ───────────────────────────────────────────────────────────────
 @st.cache_data
@@ -48,7 +47,7 @@ fig1.update_layout(
     margin=dict(t=20, b=20),
     showlegend=False,
 )
-st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig1, width='stretch')
 
 st.divider()
 
@@ -73,7 +72,7 @@ fig2 = px.imshow(
 )
 fig2.update_layout(height=480, margin=dict(t=20, b=20))
 fig2.update_coloraxes(colorbar_title="Mean<br>z-score")
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig2, width='stretch')
 
 st.divider()
 
@@ -144,14 +143,14 @@ summary_data = {
     "Model":         ["HDBSCAN mcs=50 ms=10", "DBSCAN eps=0.203 ms=10",
                       "KMeans k=4",           "GMM k=40",
                       "Runtime Quantile",     "Single Cluster"],
-    "Clusters":      [617, 687, 4, 40, 6, 1],
-    "Silhouette":    [0.874, 0.493, 0.303, 0.142, 0.041, "—"],
-    "DB Index":      [0.488, 0.508, 1.127, 2.070, 93.09, "—"],
+    "Clusters":      ["617", "687", "4", "40", "6", "1"],
+    "Silhouette":    ["0.874", "0.493", "0.303", "0.142", "0.041", "—"],
+    "DB Index":      ["0.488", "0.508", "1.127", "2.070", "93.09", "—"],
     "Role":          ["✅ Primary model", "Secondary (validation)",
                       "Macro labelling", "❌ Eliminated",
                       "Baseline", "Baseline"],
 }
-st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+st.dataframe(pd.DataFrame(summary_data), width='stretch', hide_index=True)
 
 st.caption(
     "HDBSCAN is the approved model. It leads on Silhouette, DB Index, and CH Score. "
