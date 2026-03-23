@@ -350,12 +350,19 @@ Always include header separator row (`| --- | --- | --- |`).
 
 ## Open Questions / TODO
 
-- [ ] Cluster profiling: characterise each major cluster type with mean feature values and business labels
-- [ ] Business insights: map clusters to scheduling/autoscaling recommendations
+Modeling (implement in this order):
+- [ ] Implement GMM with BIC-selected k — probabilistic primary model
+- [ ] Implement KMeans elbow method (k-means++ init, inertia vs k plot, percent differential) — not as a competitor; use the elbow k to group HDBSCAN micro-clusters into macro-level workload type labels for the profiling stage
+- [ ] Tune DBSCAN eps using k-distance graph method rather than guessing
+
+Profiling and evaluation:
+- [ ] Cluster profiling: `df_formatted.groupby('cluster')[feature_cols].mean()` on HDBSCAN results, using elbow k to define macro-type groupings with business labels
+- [ ] Business insights: map macro-type clusters to scheduling/autoscaling recommendations
 - [ ] SLA risk simulation and cost estimation per cluster
 - [ ] Stability validation (ARI across 10 subsamples)
+
+Outstanding:
 - [ ] Clarify deployment scope with stakeholders: production pipeline vs proof-of-concept (see `docs/additional_docs/questions.md`)
-- [ ] Consider GMM (Gaussian Mixture Models) as an alternative probabilistic approach
 - [ ] Final deliverable format: report, slides, or demo video (pending stakeholder input)
 
 ---

@@ -729,120 +729,201 @@ Clustering methods (HDBSCAN, DBSCAN, KMeans) assume distances in feature space a
 
 #### Primary Models
 
+These models are selected based on their ability to discover natural cluster structures in high-dimensional, mixed-density workload data. HDBSCAN is the main model; DBSCAN and GMM serve as validation and probabilistic comparison models.
+
 HDBSCAN (Main Model)
 
-* Automatically detects clusters of different sizes and densities.
-* Identifies outliers without forcing every workload into a group.
+* Hierarchical extension of DBSCAN that automatically selects density thresholds at each level of the hierarchy.
+* Discovers clusters of varying sizes and densities — well suited for workload data where job types range from tiny short-lived batch tasks to large long-running services.
+* Identifies noise points without forcing every workload into a cluster; noise represents genuinely atypical workloads, not mislabels.
 * No need to predefine the number of clusters.
-* Best suited for discovering natural workload types.
-Use: Primary production model for workload profiling.
+* Key parameters: `min_cluster_size` controls cluster granularity (lower = more fine-grained clusters); `min_samples` controls noise sensitivity (higher = more conservative, more noise).
 
-DBSCAN (Validation Model)
+Use: Primary production model for workload type discovery.
 
-* Classic density-based clustering.
-* Requires tuning of `eps`, but useful for confirming HDBSCAN results.
-* Also detects noise and outliers.
-Use: Cross-validation of cluster structure.
+DBSCAN (Density-Based Validation)
+
+* Classic density-based algorithm that groups points reachable within a fixed neighbourhood radius (`eps`).
+* Each point is classified as a core point (≥ `min_samples` neighbours within `eps`), a border point (within `eps` of a core point but too few neighbours to be core itself), or noise (-1).
+* More sensitive to `eps` selection than HDBSCAN; the k-distance graph method is used to guide tuning: plot the distance to the kth nearest neighbour for every point (sorted ascending) and use the elbow of the curve as the optimal `eps` value.
+* Useful as a cross-check: if HDBSCAN and DBSCAN broadly agree on cluster structure, the results are more trustworthy.
+
+Use: Validation of HDBSCAN cluster structure; secondary density-based reference.
+
+GMM — Gaussian Mixture Models (Probabilistic)
+
+* Models the dataset as a mixture of Gaussian distributions; each cluster is represented by a Gaussian with its own mean, covariance, and mixture weight.
+* Unlike HDBSCAN and DBSCAN, GMM produces soft assignments — each workload receives a probability of belonging to each cluster, not just a hard label. This is useful when workload types overlap or have fuzzy boundaries.
+* Handles elliptical cluster shapes, making it more flexible than KMeans.
+* Requires specifying the number of components (k) upfront; BIC (Bayesian Information Criterion) is used to select k — lower BIC indicates a better balance between model fit and complexity.
+* Assumes clusters follow Gaussian distributions; may not hold for highly skewed workload features such as `memory_overprovisioning_ratio` or `cpu_peak_to_avg_ratio`.
+
+Use: Probabilistic comparison to assess whether soft boundaries between workload types are more appropriate than hard cluster assignments.
+
+#### Dimensionality Reduction — PCA
+
+PCA (Principal Component Analysis) was originally planned as a pre-processing step to reduce the 17 clustering features before feeding them into the model (as in a typical PCA → KMeans pipeline). However, this approach was deliberately not followed here.
+
+Instead, PCA is used exclusively as a diagnostic and visualisation tool:
+
+* 2D Visualisation: Each model's cluster results are projected onto PC1 and PC2 to produce a scatter plot, allowing visual inspection of cluster separation and structure.
+* Feature Importance: The loadings of each principal component reveal which original features drive the most variance in the dataset, informing interpretation.
+* Variance Diagnostics: The cumulative explained variance chart confirms how much of the dataset's structure is captured by the first two components.
+
+Key findings from PCA diagnostics:
+
+* PC1 (33% variance) is dominated by memory-scale features: `avg_memory`, `max_memory`, `assigned_memory`, `req_memory`. The primary axis of variation in this dataset is memory scale, not CPU or runtime.
+* PC2 (21% variance) is dominated by utilisation efficiency: `memory_utilization_peak`, `memory_utilization_avg`, `runtime_efficiency`.
+* PC1 and PC2 together explain 54% of total variance; the remaining 46% is distributed across higher-order components capturing finer-grained patterns.
+
+Why PCA output is not used as clustering input:
+
+* Density-based methods (HDBSCAN, DBSCAN) operate on distances in the original feature space; projecting to 2 components discards the 46% variance needed to distinguish workload micro-patterns.
+* The 17 scaled features already provide a clean, well-conditioned input; PCA compression here would lose signal, not reduce noise.
+* Cluster profiling (computing mean statistics per cluster) is done on the original features anyway — so clustering in PCA space would introduce a disconnect between the model and its interpretation.
+
+Use: Visualisation of cluster structure and feature importance diagnostics only. Not used as input to any clustering model.
+
+#### Other Techniques Considered
+
+These approaches were reviewed but are not part of the primary evaluation, with reasons noted.
+
+KMeans (k > 1)
+
+* Centroid-based algorithm; fast and highly scalable.
+* Requires specifying k upfront; the elbow method (plot inertia vs k) or percent differential analysis (percentage improvement in inertia at each step) is used to identify the optimal k.
+* Uses `init='k-means++'` rather than random initialisation — spreads starting centroids more evenly across the feature space, reducing the chance of poor local minima.
+* Not selected as a primary model because it assumes spherical, similarly-sized clusters, which does not reflect the natural multi-scale structure of workload data.
+* Applied specifically to find the elbow k — the number of macro-level workload types present in the data. This elbow k is used to group and label the HDBSCAN micro-clusters into a smaller set of interpretable categories for operational teams, rather than as a competing clustering model.
+
+Use: Elbow method to determine macro-level k; used to assign business-friendly workload type labels to HDBSCAN clusters in the profiling stage.
+
+Agglomerative (Hierarchical) Clustering
+
+* Progressively merges the two closest clusters; results can be visualised as a dendrogram showing the full hierarchy of merges.
+* Does not require specifying k upfront — the dendrogram can be cut at different levels to produce different numbers of clusters.
+* Computationally expensive at 121k records; not practical without significant sampling.
+
+Spectral Clustering
+
+* Graph-based approach; constructs a similarity graph and clusters by partitioning the graph using its Laplacian eigenvectors.
+* Handles non-spherical and manifold-shaped clusters well.
+* Does not scale to 121k samples without approximation; not practical here.
+
+OPTICS
+
+* Conceptually similar to HDBSCAN; orders points by reachability distance to expose density structure at all scales.
+* Handles varying cluster densities but requires more manual interpretation of the reachability plot to extract clusters.
+* HDBSCAN is preferred as it automates this step and produces cleaner results.
 
 #### Baseline Models (Sanity Checks)
 
+Baselines establish a performance floor. Any real model must clearly outperform them on all metrics to justify the added complexity of density-based and probabilistic approaches.
+
 Single Cluster (KMeans, k=1)
 
-* Assumes all workloads are identical.
-* Used to confirm that real clustering adds value.
-* Real models must clearly outperform this trivial case.
+* Assumes all workloads are identical — the trivial worst-case scenario.
+* All clustering quality metrics (Silhouette, Davies-Bouldin, etc.) are undefined for a single cluster.
+* Purpose: confirms that any model producing more than one coherent cluster with valid metrics is already an improvement.
 
-Runtime Quantile Split (5–6 bins)
+Runtime Quantile Split (6 bins)
 
-* Groups workloads by runtime only (short → long).
-* Simple and intuitive benchmark.
-* Real clustering should show better structure than this basic segmentation.
-
+* Groups workloads by runtime only (short → long) using quantile bins.
+* Tests the hypothesis that runtime alone is sufficient to define workload types.
+* Real clustering must show substantially better separation and more balanced clusters to justify using the full multi-dimensional feature set.
 
 #### Assumptions Before Modeling
 
 * No missing values (handled in Clean Data).
-* All features numeric and formatted.
+* All features are numeric and scaled via `StandardScaler` (mean 0, variance 1).
 * Large enough sample size (~121k workloads).
-* Feature scaling required → apply `StandardScaler`.
-
+* Feature scaling is required for all distance-based methods (HDBSCAN, DBSCAN, KMeans) and for GMM to prevent high-magnitude features from dominating.
+* PCA is applied after clustering for visualisation and diagnostics only — not before.
 
 #### Workflow
 
-1. Scale features
-2. Fit HDBSCAN and evaluate results
-3. Fit DBSCAN for validation
-4. Compare both against baseline models
-5. Select the best-performing technique
+1. Run baseline models (Single Cluster, Runtime Quantile) to establish the performance floor
+2. Fit HDBSCAN — primary model, automatic cluster discovery
+3. Fit DBSCAN with k-distance graph-guided `eps` — density-based validation
+4. Fit GMM with BIC-selected k — probabilistic comparison
+5. Run KMeans elbow method to determine macro-level k for cluster profiling
+6. Evaluate all models using Silhouette, Davies-Bouldin, Calinski-Harabasz, and Dunn Index; generate PCA 2D visualisation and feature loading diagnostics per model
+7. Compare all models against baselines; select the best-performing technique
 
-HDBSCAN is used as the primary technique, validated against DBSCAN and simple baselines to ensure the discovered workload types are stable, meaningful, and operationally useful.
+HDBSCAN is the primary candidate. DBSCAN and GMM provide complementary perspectives — density-based validation and probabilistic comparison respectively. KMeans elbow k informs the macro-level grouping used in cluster profiling. PCA runs alongside every model as a diagnostic, not as a pre-processing step.
 
 ### 4.2 Test Design
 
 
 Because this is an unsupervised clustering project, a train/test split is not required. Instead, we run all models on the full dataset (~121k workloads) and validate whether the discovered clusters are high quality, stable, and operationally meaningful.
 
-
 #### Model Validation
 
-**Quality Check - Are clusters well formed?**
+**Quality Check — Are clusters well formed?**
 
-* Silhouette Score → target > 0.4 (good), > 0.6 (excellent)
-* Davies-Bouldin Index → target < 1.0
-* Dunn Index → target > 0.5
-* Calinski-Harabasz Score → maximize
-* WCSS (Within-Cluster Sum of Squares) → assess compactness
+The following metrics are computed for every model. Note: noise points (label `-1` from HDBSCAN/DBSCAN) are excluded before computing any metric, as they do not belong to any cluster.
+
+* Silhouette Score → target > 0.4 (good), > 0.6 (excellent). Measures how similar each point is to its own cluster vs its nearest neighbour cluster. Range: -1 to 1; higher is better.
+* Davies-Bouldin Index → target < 1.5 (good), < 1.0 (excellent). Measures the average ratio of intra-cluster scatter to inter-cluster separation. Lower is better.
+* Calinski-Harabasz Score → maximize. Ratio of between-cluster to within-cluster dispersion; higher values indicate more compact, well-separated clusters.
+* Dunn Index → target > 0.5. Ratio of minimum inter-cluster distance to maximum intra-cluster diameter. Higher values indicate tight, well-separated clusters.
+* Noise Fraction → target < 20%. Percentage of workloads labelled as noise (-1) by density-based models. Too high suggests overly conservative parameters; too low may indicate noise is being absorbed into clusters.
+
+For GMM specifically:
+
+* BIC (Bayesian Information Criterion) → minimize. Used to select the number of Gaussian components (k). Lower BIC indicates a better balance between model fit and complexity.
+* AIC (Akaike Information Criterion) → minimize. Alternative to BIC for k selection; less penalising of model complexity than BIC.
+* Log-likelihood → maximize. Measures how well the fitted GMM explains the observed data.
+
+For KMeans elbow specifically:
+
+* Inertia (WCSS) → plot against k to find elbow. Within-cluster sum of squares; not used as a standalone quality metric but as a tool to identify the optimal macro-level k.
 
 Most importantly, real models must outperform the baselines:
 
-* Single Cluster baseline (expected silhouette ~0.0)
-* Runtime Quantile baseline (expected silhouette ~0.2-0.3)
+* Runtime Quantile baseline (silhouette ~0.13, DB Index ~2.70) — the meaningful floor
+* Single Cluster baseline (silhouette undefined) — the trivial floor
 
-Success rule: Real clustering must improve silhouette by at least +0.3 over the Single Cluster baseline.
+Success rule: Real clustering must achieve Silhouette > 0.4 and Davies-Bouldin < 1.5, clearly exceeding the Runtime Quantile baseline's silhouette of ~0.13.
 
-**Stability Check - Are results repeatable?**
+**Stability Check — Are results repeatable?**
 
 To ensure robustness:
 
 * Create 10 random 80% subsets (~97k records each)
-* Re-run HDBSCAN and DBSCAN
+* Re-run HDBSCAN, DBSCAN, and GMM on each subset
 * Compare runs using Adjusted Rand Index (ARI)
 
 Target: Mean ARI > 0.8 → stable workload types.
 
-For HDBSCAN, we also check:
-
-* Cophenetic Correlation (> 0.7) to confirm hierarchical structure quality.
-
 **Structural & Balance Checks**
 
-* No cluster larger than 40% of the dataset
-* No cluster smaller than 1%
-* Reasonable cluster tightness and separation
-
-This ensures practical and balanced profiling.
+* No single cluster larger than 40% of the dataset — prevents one dominant catch-all group.
+* No single cluster smaller than `min_cluster_size` samples (the HDBSCAN parameter) — confirms the model's own density threshold is respected.
+* Noise fraction within acceptable range (< 20%) — confirms parameters are neither too conservative nor too loose.
 
 **Business Validation**
 
-Beyond metrics, clusters must make real-world sense. For that, analyze:
+Beyond metrics, clusters must make real-world sense. Analyse per cluster:
 
 * Runtime patterns
-* CPU and memory usage behavior
+* CPU and memory usage behaviour
 * Failure rate differences (`failed`)
+* Overprovisioning and utilisation efficiency ratios
 
-Clusters should provide insights relevant to SLA monitoring and capacity planning.
-
+Clusters should provide insights directly relevant to SLA monitoring, capacity planning, and scheduling policy design.
 
 #### Final Success Criteria
 
 The model is considered successful if it:
 
-* Clearly beats both baselines
-* Achieves Silhouette > 0.4
-* Shows ARI stability > 0.8
-* Produces balanced, interpretable workload types
+* Clearly beats both baselines (Silhouette, Davies-Bouldin, cluster balance)
+* Achieves Silhouette > 0.4 with noise points excluded
+* Shows mean ARI > 0.8 across 10 stability subsets
+* Produces no single dominant cluster (< 40% max)
+* Yields operationally interpretable workload type profiles
 
-In short, the clusters must be statistically strong, repeatable, and business-relevant before being approved for production workload profiling.
+In short, the clusters must be statistically strong, repeatable, and business-relevant before being used for production workload profiling.
 
 ### 4.3 Build Model
 
