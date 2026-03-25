@@ -19,17 +19,21 @@ profiles, mean_profile = load_data()
 # ── Page header ────────────────────────────────────────────────────────────────
 st.title("📊 Key Findings")
 st.markdown(
-    "Business-level insights derived from the 4 discovered workload archetypes - "
-    "including novel findings beyond the original project objectives."
+    "Business-level insights from the 4 discovered workload archetypes - "
+    "including novel findings that emerged beyond the original project objectives. "
+    "All findings are derived from the HDBSCAN + KMeans pipeline applied to "
+    "405,894 workload instances from the Google Borg 2019 cluster trace."
 )
 
 st.divider()
 
 # ── Failure rate gradient ──────────────────────────────────────────────────────
-st.subheader("Failure Rate Gradient Across Archetypes")
+st.subheader("Failure Rate Gradient - The 10x Spread")
 st.caption(
-    "The failure rate decreases monotonically from Group 0 to Group 3 - "
-    "a clear risk tier structure that maps directly to infrastructure priorities."
+    "The failure rate decreases monotonically from Group 0 (31.4%) to Group 3 (3.3%) - "
+    "a nearly 10x range hidden inside a 23% overall average. "
+    "This structure is completely invisible in any aggregate metric; it only emerges "
+    "when workloads are grouped by memory behaviour via unsupervised clustering."
 )
 
 labels = [f"Group {g}\n{NAMES[g]}" for g in range(4)]
@@ -52,10 +56,12 @@ st.plotly_chart(fig1, width='stretch')
 st.divider()
 
 # ── Feature heatmap ────────────────────────────────────────────────────────────
-st.subheader("Feature Profile Heatmap - All Archetypes")
+st.subheader("Feature Profile Heatmap - What Makes Each Archetype Different")
 st.caption(
-    "Colour shows relative intensity per feature (green = high, red = low). "
-    "CPU features are excluded - confirmed zero discriminative signal across all groups."
+    "Each cell shows the mean standardised value (z-score) for that feature in that group. "
+    "**Green = above the dataset average. Red = below.** Grey means no signal. "
+    "Notice the CPU rows are uniformly grey - confirmed zero discriminative signal. "
+    "Memory features (top rows) drive all the variation."
 )
 
 # Exclude zero-signal CPU columns
@@ -77,7 +83,7 @@ st.plotly_chart(fig2, width='stretch')
 st.divider()
 
 # ── Novel findings ─────────────────────────────────────────────────────────────
-st.subheader("Novel Findings")
+st.subheader("Novel Findings - Beyond the Original Objectives")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -112,7 +118,11 @@ with col2:
 st.divider()
 
 # ── Business recommendations ───────────────────────────────────────────────────
-st.subheader("Infrastructure Recommendations per Archetype")
+st.subheader("Infrastructure Recommendations - Per Archetype")
+st.caption(
+    "Concrete scheduling, autoscaling, and SLA actions for each workload type. "
+    "Expand any archetype to see its three recommendation areas."
+)
 
 for g in range(4):
     with st.expander(
@@ -138,14 +148,19 @@ for g in range(4):
 st.divider()
 
 # ── Model summary ──────────────────────────────────────────────────────────────
-st.subheader("Model Summary")
+st.subheader("Model Comparison - All 6 Algorithms")
+st.caption(
+    "All models were evaluated on the same 30% random sample (121,535 workloads). "
+    "Two baselines set the floor; four density/centroid models competed above it. "
+    "HDBSCAN wins on every metric and is the only model with stable results across repeated runs."
+)
 summary_data = {
     "Model":         ["HDBSCAN mcs=50 ms=10", "DBSCAN eps=0.203 ms=10",
                       "KMeans k=4",           "GMM k=40",
                       "Runtime Quantile",     "Single Cluster"],
     "Clusters":      ["617", "687", "4", "40", "6", "1"],
-    "Silhouette":    ["0.874", "0.493", "0.303", "0.142", "0.041", "—"],
-    "DB Index":      ["0.488", "0.508", "1.127", "2.070", "93.09", "—"],
+    "Silhouette":    ["0.874", "0.493", "0.303", "0.142", "0.041", "-"],
+    "DB Index":      ["0.488", "0.508", "1.127", "2.070", "93.09", "-"],
     "Role":          ["✅ Primary model", "Secondary (validation)",
                       "Macro labelling", "❌ Eliminated",
                       "Baseline", "Baseline"],
@@ -153,6 +168,9 @@ summary_data = {
 st.dataframe(pd.DataFrame(summary_data), width='stretch', hide_index=True)
 
 st.caption(
-    "HDBSCAN is the approved model. It leads on Silhouette, DB Index, and CH Score. "
-    "Macro-level ARI = 0.9975 confirms production-grade stability of the 4-archetype grouping."
+    "✅ **HDBSCAN** is the approved model - leads on Silhouette Score (0.874), "
+    "Davies-Bouldin Index (0.488), and Calinski-Harabasz Score. "
+    "Macro ARI = 0.9975 ± 0.0006 across 5 sub-sample stability runs confirms "
+    "production-grade reliability of the 4-archetype grouping. "
+    "❌ GMM was eliminated due to unstable cluster assignments across runs."
 )

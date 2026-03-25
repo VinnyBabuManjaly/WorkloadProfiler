@@ -86,21 +86,29 @@ def build_feature_vector(vals: dict, feature_cols: list) -> pd.DataFrame:
 # ── Page header ────────────────────────────────────────────────────────────────
 st.title("🎯 Workload Classifier")
 st.markdown(
-    "Describe a workload using its resource characteristics. "
-    "The classifier scales the inputs, applies the trained KMeans model, "
-    "and identifies which of the 4 archetypes best matches - along with "
-    "concrete infrastructure recommendations."
+    "Enter the resource characteristics of any workload - how much memory was allocated, "
+    "how much was actually used, and how long it ran. The classifier builds a 17-feature "
+    "vector, applies `StandardScaler` normalisation, then uses the trained **KMeans model** "
+    "to identify which of the 4 discovered archetypes it most closely matches.\n\n"
+    "The result includes the archetype's **failure rate**, its infrastructure meaning, "
+    "and concrete **scheduling, autoscaling, and SLA recommendations** - plus a chart "
+    "showing how your workload compares to the archetype average."
 )
 st.info(
-    "**Note on CPU features:** All CPU-related features (`avg_cpu`, `max_cpu`, `req_cpu`, "
-    "utilisation ratios) are set to zero automatically. Analysis confirmed these carry no "
-    "discriminative signal in the Google Borg 2019 trace - memory and runtime drive all classification.",
+    "**Why are CPU inputs missing?** All six CPU features (`avg_cpu`, `max_cpu`, `req_cpu`, "
+    "`avg_cpu_utilization`, `peak_cpu_utilization`, `cpu_peak_to_avg_ratio`) showed a "
+    "mean z-score of 0.000 across all four archetypes in the full dataset analysis. "
+    "They carry **zero discriminative signal** - memory and runtime drive all classification "
+    "in the Google Borg 2019 trace.",
     icon="ℹ️",
 )
 
 # ── Preset examples ────────────────────────────────────────────────────────────
-st.subheader("Load a preset example")
-st.caption("Pre-fills the sliders with a real workload sampled from each archetype.")
+st.subheader("Load a Preset Example")
+st.caption(
+    "Pre-fills the sliders with a real workload sampled directly from each archetype in the dataset. "
+    "A good starting point before adjusting values manually."
+)
 preset_cols = st.columns(4)
 for g, col in enumerate(preset_cols):
     if col.button(
@@ -126,51 +134,84 @@ for g, col in enumerate(preset_cols):
 st.divider()
 
 # ── Input sliders ──────────────────────────────────────────────────────────────
-st.subheader("Workload Features")
+st.subheader("Workload Resource Inputs")
+st.caption(
+    "All values are in Borg-normalised units (0–1 scale relative to cluster capacity). "
+    "Adjust the sliders to describe your workload's memory footprint and runtime."
+)
 left, right = st.columns(2)
 
 with left:
     st.slider(
-        "assigned_memory",
+        "Assigned Memory - `assigned_memory`",
         min_value=0.0001, max_value=0.99, step=0.0001, format="%.4f",
         key="assigned_memory",
-        help="Memory allocated to this workload (Borg normalised units, 0–1)",
+        help=(
+            "Memory allocated (provisioned) to this workload by the scheduler. "
+            "In Borg-normalised units: 1.0 = entire cluster memory. "
+            "Compare to avg_memory to detect over-provisioning."
+        ),
     )
     st.slider(
-        "req_memory",
+        "Requested Memory - `req_memory`",
         min_value=0.0001, max_value=0.99, step=0.0001, format="%.4f",
         key="req_memory",
-        help="Memory requested by this workload",
+        help=(
+            "Memory the workload declared it needs at submission time. "
+            "High assigned_memory relative to req_memory indicates the scheduler "
+            "padded the allocation - a key over-provisioning signal."
+        ),
     )
     st.slider(
-        "avg_memory",
+        "Average Memory Used - `avg_memory`",
         min_value=0.0001, max_value=0.99, step=0.0001, format="%.4f",
         key="avg_memory",
-        help="Average memory actually consumed during execution",
+        help=(
+            "Average memory actually consumed across the workload's lifetime. "
+            "The gap between assigned_memory and avg_memory is the idle/wasted capacity. "
+            "Used to compute memory_utilization_avg."
+        ),
     )
 
 with right:
     st.slider(
-        "max_memory",
+        "Peak Memory Used - `max_memory`",
         min_value=0.0001, max_value=0.99, step=0.0001, format="%.4f",
         key="max_memory",
-        help="Peak memory usage recorded during execution",
+        help=(
+            "Highest memory usage recorded at any single point during execution. "
+            "Used to compute memory_utilization_peak. "
+            "A large gap between max_memory and avg_memory indicates bursty memory behaviour."
+        ),
     )
     st.slider(
-        "page_cache_memory",
+        "Page Cache Memory - `page_cache_memory`",
         min_value=0.0, max_value=0.50, step=0.0001, format="%.4f",
         key="page_cache_memory",
-        help="Memory used for page cache (proxy for I/O intensity)",
+        help=(
+            "Memory used for OS page cache - a proxy for I/O intensity. "
+            "High values indicate the workload reads heavily from disk. "
+            "Used to compute page_cache_ratio = page_cache_memory / assigned_memory."
+        ),
     )
     st.slider(
-        "runtime_seconds",
+        "Runtime Duration - `runtime_seconds`",
         min_value=0.0001, max_value=1.0, step=0.0001, format="%.4f",
         key="runtime_seconds",
-        help="Workload runtime duration (Borg normalised time units, 0–1)",
+        help=(
+            "How long the workload ran, in Borg-normalised time units (0–1). "
+            "Used to compute runtime_efficiency = runtime_seconds / assigned_memory. "
+            "High runtime + low memory usage = long-running over-provisioned pattern (Group 0)."
+        ),
     )
 
 # Derived features preview
-with st.expander("Derived features (computed automatically)"):
+with st.expander("🔧 Derived features - computed automatically from the inputs above"):
+    st.caption(
+        "These 5 ratios are computed from your slider inputs and added to the 6 raw features "
+        "to form the full 17-feature vector used for classification. "
+        "CPU features are fixed at 0.0 (zero discriminative signal in this dataset)."
+    )
     am  = st.session_state["assigned_memory"]
     rm  = st.session_state["req_memory"]
     avm = st.session_state["avg_memory"]
@@ -179,11 +220,16 @@ with st.expander("Derived features (computed automatically)"):
     rt  = st.session_state["runtime_seconds"]
     eps = 1e-9
     d1, d2, d3, d4, d5 = st.columns(5)
-    d1.metric("memory_overprovisioning_ratio", f"{am/(rm+eps):.3f}")
-    d2.metric("memory_utilization_avg",        f"{avm/(am+eps):.3f}")
-    d3.metric("memory_utilization_peak",       f"{mxm/(am+eps):.3f}")
-    d4.metric("runtime_efficiency",            f"{rt/(am+eps):.3f}")
-    d5.metric("page_cache_ratio",              f"{pc/(am+eps):.3f}")
+    d1.metric("Overprovisioning Ratio",  f"{am/(rm+eps):.3f}",
+              help="assigned_memory / req_memory - how much more was given than requested.")
+    d2.metric("Avg Memory Utilisation",  f"{avm/(am+eps):.3f}",
+              help="avg_memory / assigned_memory - fraction of allocation actually used on average.")
+    d3.metric("Peak Memory Utilisation", f"{mxm/(am+eps):.3f}",
+              help="max_memory / assigned_memory - peak fraction of allocation used at any point.")
+    d4.metric("Runtime Efficiency",      f"{rt/(am+eps):.3f}",
+              help="runtime_seconds / assigned_memory - duration relative to memory footprint.")
+    d5.metric("Page Cache Ratio",        f"{pc/(am+eps):.3f}",
+              help="page_cache_memory / assigned_memory - I/O intensity proxy.")
 
 st.divider()
 
@@ -214,7 +260,11 @@ if st.button("🔍  Classify Workload", type="primary", width='stretch'):
         )
 
     st.markdown("#### How this workload compares to the archetype average")
-    st.caption("Bars show mean standardised feature value. CPU features excluded.")
+    st.caption(
+        "Each pair of bars shows one feature. **Coloured = your workload's standardised value. "
+        "Grey = the Group average.** Features further from zero (in either direction) are what "
+        "most strongly define this archetype. CPU features are excluded - zero signal."
+    )
 
     non_cpu = [c for c in feature_cols if "cpu" not in c.lower()]
     idx     = [feature_cols.index(c) for c in non_cpu]

@@ -3,351 +3,718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workload Profiler | Intelligent Cluster Workload Segmentation</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-
+    <title>Workload Profiler | Unsupervised Machine Learning Case Study</title>
     <style>
-    body {
-        font-family: 'Inter', sans-serif;
-        margin: 0;
-        background-color: #0e1117; /* Deep Charcoal */
-        color: #e6edf3;
-        line-height: 1.65;
-    }
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+        }
 
-    header {
-        padding: 90px 20px 60px 20px;
-        text-align: center;
-        background: linear-gradient(135deg, #161b22, #0e1117);
-    }
+        * { box-sizing: border-box; }
 
-    header p {
-        max-width: 800px;
-        margin: 0 auto 16px auto;
-        color: #9da7b3;
-    }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--light);
+            color: var(--primary);
+            line-height: 1.6;
+        }
 
-    h1 {
-        font-size: 44px;
-        margin-bottom: 16px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-    }
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 40px 20px;
+        }
 
-    h2 {
-        margin: 0 0 20px 0;
-        font-weight: 600;
-        border-left: 4px solid #2dd4bf; /* Muted Teal Accent */
-        padding-left: 14px;
-    }
+        .hero {
+            background: var(--primary);
+            color: white;
+            padding: 80px 20px;
+        }
 
-    h3 {
-        margin: 24px 0 8px 0;
-        font-weight: 600;
-    }
+        .hero h1 {
+            font-size: 2.8rem;
+            margin-bottom: 6px;
+        }
 
-    .section {
-        padding: 10px 10%;
-        max-width: 1200px;
-        margin: auto;
-    }
+        .hero-subtitle {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #93c5fd;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            margin-top: 0;
+        }
 
-    .card {
-        background: #161b22;
-        padding: 26px;
-        border-radius: 14px;
-        margin-bottom: 20px;
-        border: 1px solid #22262e;
-    }
+        .hero p {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            max-width: 760px;
+            line-height: 1.75;
+        }
 
-    .metrics {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-top: 20px;
-    }
+        .badges {
+            margin-top: 20px;
+        }
 
-    .metric-box {
-        flex: 1;
-        min-width: 220px;
-        background: #1c2128;
-        padding: 24px;
-        border-radius: 12px;
-        text-align: center;
-        border: 1px solid #242a33;
-    }
+        .badges span {
+            background: #1e293b;
+            padding: 6px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
 
-    .metric-box h3 {
-        margin: 0;
-        font-size: 28px;
-        font-weight: 700;
-        color: #2dd4bf; /* Teal highlight for metrics */
-    }
+        .hero-links {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
 
-    .metric-box p {
-        margin-top: 8px;
-        font-size: 14px;
-        color: #9da7b3;
-    }
+        .hero-links a {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
 
-    ul {
-        padding-left: 22px;
-    }
+        .btn-primary { background: var(--accent); color: white; }
 
-    li {
-        margin-bottom: 6px;
-    }
+        .btn-secondary {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+        }
 
-    a {
-        color: #2dd4bf;
-        text-decoration: none;
-        font-weight: 500;
-    }
+        section { margin-top: 60px; }
 
-    a:hover {
-        text-decoration: underline;
-        opacity: 0.85;
-    }
+        h2 {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
 
-    footer {
-        padding: 40px 20px;
-        text-align: center;
-        background: #0b0f14;
-        font-size: 14px;
-        color: #8b949e;
-        border-top: 1px solid #1f242c;
-    }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
 
-    .link-group {
-        margin-top: 20px;
-    }
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
 
-    .link-group a {
-        margin: 0 10px;
-    }
-</style>
+        .metric-card h3 {
+            margin: 0 0 6px 0;
+            color: var(--accent);
+            font-size: 1.8rem;
+        }
+
+        .metric-card p { margin: 0; font-size: 0.9rem; color: var(--gray); }
+        .metric-card .sub { font-size: 0.78rem; color: #94a3b8; margin-top: 4px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        th { background: #f1f5f9; }
+        .highlight { background: #e0f2fe; font-weight: 600; }
+        .muted { color: #94a3b8; }
+
+        .archetype-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .arch-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 4px solid var(--ac);
+        }
+
+        .arch-card h4 { margin: 0 0 8px 0; font-size: 0.95rem; color: var(--ac); }
+        .arch-card p { font-size: 0.85rem; color: var(--gray); margin: 0 0 12px 0; line-height: 1.5; }
+
+        .arch-stats { display: flex; flex-wrap: wrap; gap: 6px; }
+
+        .stat {
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+
+        .findings-list { list-style: none; padding: 0; margin: 0; }
+
+        .findings-list li {
+            background: white;
+            border-left: 4px solid var(--accent);
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            font-size: 0.95rem;
+        }
+
+        .findings-list li strong { display: block; margin-bottom: 4px; }
+        .findings-list li.warn    { border-left-color: #f59e0b; }
+        .findings-list li.success { border-left-color: #10b981; }
+        .findings-list li.info    { border-left-color: #6366f1; }
+
+        .callout {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-top: 20px;
+            font-size: 0.92rem;
+            color: #1e3a5f;
+        }
+
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        footer {
+            margin-top: 80px;
+            padding: 40px;
+            text-align: center;
+            background: var(--primary);
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        footer a { color: #93c5fd; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+        a { color: var(--accent); text-decoration: none; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+        }
+    </style>
 </head>
-
 <body>
 
-    <header>
+<!-- Hero -->
+<div class="hero">
+    <div class="container">
         <h1>Workload Profiler</h1>
+        <p class="hero-subtitle">Unsupervised Workload Archetype Discovery on Google Borg Cluster Traces</p>
         <p>
-            Data-Driven Discovery of Intelligent Workload Types in Large-Scale Compute Clusters
+            Applied <strong>HDBSCAN</strong> and <strong>KMeans</strong> in a two-stage pipeline to cluster
+            405,894 workload instances from Google's 2019 Borg trace data - surfacing 4 operationally
+            distinct archetypes across memory utilisation, overprovisioning, and runtime efficiency dimensions.
+            Achieves a Silhouette Score of <strong>0.874</strong> with an ARI of <strong>0.9975 ± 0.0006</strong>
+            across stability runs, translating cluster findings directly into scheduling, bin-packing, and
+            memory reclamation recommendations for infrastructure teams.
         </p>
-
-        <div class="link-group">
-            <a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler">
-                View GitHub Repository
-            </a>
-            |
-            <a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler/blob/master/Workload_Profiler.ipynb">
-                View Full Notebook
-            </a>
+        <div class="badges">
+            <span>HDBSCAN · KMeans · GMM · DBSCAN</span>
+            <span>Google Borg 2019 Trace</span>
+            <span>17 Features · 8 Engineered</span>
+            <span>CRISP-DM Framework</span>
+            <span>Streamlit · scikit-learn</span>
         </div>
-    </header>
-
-    <!-- Executive Summary -->
-    <div class="section">
-        <h2>Executive Summary</h2>
-
-        <div class="card">
-            <p>
-                Modern compute clusters run hundreds of thousands of workloads, yet most infrastructure systems treat them as homogeneous units.
-                This project builds a scalable, data-driven framework to automatically discover distinct workload types using real production trace data from Google’s 2019 cluster sample.
-            </p>
-
-            <p>
-                By analyzing CPU usage, memory behavior, runtime characteristics, and resource efficiency,
-                the system identifies behavioral workload segments that enable:
-            </p>
-
-            <ul>
-                <li>Smarter autoscaling strategies</li>
-                <li>Reduced overprovisioning</li>
-                <li>Improved SLA risk visibility</li>
-                <li>Behavior-aware scheduling policies</li>
-            </ul>
+        <div class="hero-links">
+            <a href="https://workloadprofiler.streamlit.app" target="_blank" class="btn-primary">Try the Live App</a>
+            <a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler/blob/master/Workload_Profiler.ipynb" target="_blank" class="btn-secondary">View Full Notebook</a>
+            <a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler" target="_blank" class="btn-secondary">GitHub Repository</a>
         </div>
     </div>
+</div>
 
-    <!-- Dataset Overview -->
-    <div class="section">
-        <h2>Dataset Overview</h2>
+<div class="container">
 
-        <div class="metrics">
-            <div class="metric-box">
+    <!-- Summary -->
+    <section>
+        <h2>What This Project Does</h2>
+        <p>
+            Google runs massive data centres with hundreds of thousands of computing tasks running at
+            the same time. These tasks - called <strong>workloads</strong> - vary enormously: some run
+            for a long time, some are short bursts, some use a lot of memory, some barely use any.
+        </p>
+        <p>
+            The problem is that most infrastructure systems treat every workload the same way, allocating
+            the same resources and applying the same scheduling rules regardless of how the task actually
+            behaves. This leads to wasted memory, unnecessary failures, and inefficient use of expensive
+            hardware.
+        </p>
+        <p>
+            This project uses <strong>unsupervised machine learning (clustering)</strong> to
+            <strong>automatically discover</strong> what types of workloads exist - without anyone
+            labelling them manually. The algorithm reads resource usage patterns and finds natural
+            groupings on its own. The result: <strong>4 clearly distinct workload archetypes</strong>,
+            each with its own failure risk and resource profile, and concrete recommendations for how
+            each type should be handled differently.
+        </p>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
                 <h3>405,894</h3>
-                <p>Total Workload Instances</p>
+                <p>Real computing tasks analysed</p>
+                <p class="sub">From Google's Borg cluster, 2019. 30% random sample (121,535 rows) used for modelling.</p>
             </div>
-
-            <div class="metric-box">
-                <h3>121,535</h3>
-                <p>Clean Modeling Records</p>
+            <div class="metric-card">
+                <h3>4</h3>
+                <p>Distinct workload archetypes discovered</p>
+                <p class="sub">Found automatically via unsupervised clustering - no manual labelling.</p>
             </div>
-
-            <div class="metric-box">
-                <h3>34</h3>
-                <p>Raw Features</p>
+            <div class="metric-card">
+                <h3>0.874</h3>
+                <p>Silhouette Score - group quality</p>
+                <p class="sub">Measures cohesion and separation of clusters. Range: -1 to 1. Above 0.6 is excellent; 1.0 is perfect.</p>
             </div>
-
-            <div class="metric-box">
-                <h3>~23%</h3>
-                <p>Failure Rate</p>
+            <div class="metric-card">
+                <h3>99.75%</h3>
+                <p>Stability across repeated runs (ARI)</p>
+                <p class="sub">Adjusted Rand Index = 0.9975 ± 0.0006 across 5 sub-sample runs. The same 4 archetypes emerge consistently.</p>
             </div>
         </div>
+    </section>
 
-        <p style="margin-top:30px;">
-            Source: Google 2019 Cluster Sample (derived from production cluster traces).
+    <!-- Problem -->
+    <section>
+        <h2>The Business Problem</h2>
+        <p>
+            Imagine assigning every employee in a company the same desk, the same computer, and the same
+            amount of office space - regardless of whether they are a graphic designer rendering 4K video
+            or an accountant updating a spreadsheet. The designer would be constantly struggling; the
+            accountant would have resources sitting idle all day. That is essentially what happens inside
+            large compute clusters when every task is treated identically.
         </p>
-    </div>
-
-    <!-- Business Problem -->
-    <div class="section">
-        <h2>Business Problem</h2>
-
-        <div class="card">
-            <p>Infrastructure teams face persistent inefficiencies:</p>
-
-            <ul>
-                <li>Overprovisioned workloads wasting memory</li>
-                <li>Underutilized CPU allocations</li>
-                <li>High failure rates without behavioral segmentation</li>
-                <li>Runtime-based scheduling that ignores resource patterns</li>
-            </ul>
-
-            <p>
-                <strong>
-                    Can we automatically discover natural workload categories that improve
-                    resource efficiency and SLA management?
-                </strong>
-            </p>
-        </div>
-    </div>
-
-    <!-- Technical Approach -->
-    <div class="section">
-        <h2>Technical Approach</h2>
-
-        <div class="card">
-            <h3>1. Feature Engineering</h3>
-            <ul>
-                <li>Runtime calculation</li>
-                <li>CPU & memory utilization ratios</li>
-                <li>Overprovisioning metrics</li>
-                <li>Peak-to-average burst ratios</li>
-                <li>Page cache dependency</li>
-            </ul>
-
-            <h3>2. Dimensionality Reduction</h3>
-            <ul>
-                <li>PCA applied to reduce noise</li>
-                <li>PC1 + PC2 explain ~54% variance</li>
-            </ul>
-
-            <h3>3. Clustering</h3>
-            <ul>
-                <li>Baselines: Single Cluster & Runtime Quantile</li>
-                <li>Primary Model: HDBSCAN (density-based)</li>
-                <li>Validation: DBSCAN</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- Baseline Results -->
-    <div class="section">
-        <h2>Baseline Results</h2>
-
-        <div class="card">
-            <h3>Single Cluster Baseline</h3>
-            <p>All workloads grouped together - no segmentation value.</p>
-
-            <h3>Runtime Quantile Baseline</h3>
-            <ul>
-                <li>3 clusters (collapsed from 6)</li>
-                <li>Silhouette: 0.128</li>
-                <li>66.5% in largest cluster</li>
-                <li>Weak separation (DB Index: 2.70)</li>
-            </ul>
-
-            <p>
-                Conclusion: Runtime alone is insufficient for meaningful workload typing.
-            </p>
-        </div>
-    </div>
-
-    <!-- Current Status -->
-    <div class="section">
-        <h2>Current Status</h2>
-
-        <div class="metrics">
-            <div class="metric-box">
-                <h3>✔</h3>
-                <p>Data Pipeline Validated</p>
-            </div>
-
-            <div class="metric-box">
-                <h3>✔</h3>
-                <p>Feature Engineering Complete</p>
-            </div>
-
-            <div class="metric-box">
-                <h3>⚠</h3>
-                <p>Advanced Clustering In Progress</p>
-            </div>
-        </div>
-
-        <p style="margin-top:30px;">
-            Moving to density-based clustering targeting:
+        <p>
+            Any organisation running large-scale compute infrastructure - whether on-premises, in the
+            cloud (AWS, Azure, GCP), or via container orchestration platforms like Kubernetes - faces
+            the same challenge. Hundreds of thousands of tasks compete for the same pool of servers:
+            machine learning training jobs, web-serving requests, batch analytics, ETL pipelines, and
+            database queries all run side by side. <strong>The infrastructure, by default, cannot tell
+            them apart.</strong> Every task gets allocated memory and scheduled by the same rules,
+            regardless of whether it actually needs them. The result is a cluster that is simultaneously
+            over-committed in some places and wastefully idle in others.
+        </p>
+        <p>
+            This project uses Google's Borg cluster trace - one of the largest publicly available
+            real-world infrastructure datasets - as a concrete, quantified case study of this universal
+            problem. The findings and methodology apply equally to any comparable compute environment.
         </p>
 
-        <ul>
-            <li>Silhouette > 0.30</li>
-            <li>Balanced clusters (<40% max size)</li>
-            <li>Clear behavioral separation</li>
+        <ul class="findings-list" style="margin-top: 16px;">
+            <li class="warn">
+                <strong>Wasted capacity from over-provisioning</strong>
+                A common pattern across large clusters: tasks are provisioned with far more memory
+                than they ever consume, because engineers pad allocations to avoid failure. That
+                unused capacity is locked and unavailable to tasks that genuinely need it - a direct
+                infrastructure cost with no performance benefit. In the Borg trace, this is not a
+                small edge case; it defines the profile of the largest, highest-failure group
+                (33.7% of all workloads).
+            </li>
+            <li class="warn">
+                <strong>A 23% average failure rate hiding a 10x spread</strong>
+                Aggregate metrics are misleading. In the Borg trace, 1 in 4 tasks fails overall -
+                but that average conceals a range from 3.3% to 31.4% depending on
+                workload type. This pattern is typical of mixed-workload clusters: a single aggregate
+                SLO or retry policy applied uniformly leaves the highest-risk workloads under-monitored
+                and the lowest-risk ones over-engineered.
+            </li>
+            <li class="info">
+                <strong>No workload labels exist - types must be discovered from behaviour</strong>
+                In most real clusters, tasks are not tagged by type. There is no column that says
+                "batch job," "latency-sensitive service," or "memory-intensive analytics." Priority
+                levels and job names exist, but they explain almost none of the variation in resource
+                behaviour (Silhouette Score of 0.041 for a runtime-only grouping). Workload identity
+                must be inferred from how tasks actually use resources - which is exactly the problem
+                unsupervised clustering is designed to solve.
+            </li>
         </ul>
-    </div>
 
-    <!-- Business Impact -->
-    <div class="section">
-        <h2>Business Impact Potential</h2>
-
-        <div class="card">
-            <ul>
-                <li>Reduce memory overprovisioning</li>
-                <li>Improve autoscaling precision</li>
-                <li>Predict SLA risks per workload type</li>
-                <li>Optimize cluster-level capacity planning</li>
-            </ul>
-
-            <p>
-                This framework transforms raw cluster telemetry into actionable infrastructure intelligence.
-            </p>
+        <div class="callout">
+            <strong>The business question - relevant to any infrastructure team:</strong>
+            Can we automatically discover what type of workload a task is - purely from its resource
+            usage behaviour - and use that to right-size memory allocations, apply differentiated
+            scheduling policies, reduce unnecessary failures, and build workload-specific SLA targets?
         </div>
-    </div>
+    </section>
 
-    <!-- Next Phase -->
-    <div class="section">
-        <h2>Next Phase</h2>
+    <!-- Data -->
+    <section>
+        <h2>The Data and What Was Measured</h2>
+        <p>
+            The dataset comes from Google's <strong>Borg</strong> system - the internal cluster manager
+            that schedules and runs tasks across Google's data centres. The 2019 trace records what
+            actually happened: how much memory each task used, how long it ran, whether it failed, and more.
+        </p>
+        <p>
+            To keep things computationally manageable, a random 30% sample of 121,535 records was used
+            for modelling. On top of the 9 raw measurements already in the data, 8 new derived features
+            were engineered to better capture how efficiently each task uses its resources:
+        </p>
+        <ul>
+            <li><strong>Memory Overprovisioning Ratio</strong> <code>(assigned_memory / req_memory)</code> - how much memory was allocated compared to how much was actually requested. High values mean the task was given far more than it asked for.</li>
+            <li><strong>Average Memory Utilisation</strong> <code>(avg_memory / assigned_memory)</code> - out of all the memory allocated, how much was actually used on average during the task's lifetime.</li>
+            <li><strong>Peak Memory Utilisation</strong> <code>(max_memory / assigned_memory)</code> - the highest memory usage recorded at any point during the task, as a fraction of what was allocated.</li>
+            <li><strong>Average CPU Utilisation</strong> <code>(avg_cpu / assigned_memory)</code> - average CPU usage relative to what was allocated. (This turned out to carry no discriminative signal - see Key Findings.)</li>
+            <li><strong>Peak CPU Utilisation</strong> <code>(max_cpu / assigned_memory)</code> - the highest CPU usage recorded, relative to allocation. (Also zero signal.)</li>
+            <li><strong>CPU Burstiness</strong> <code>(max_cpu / avg_cpu)</code> - how much the CPU usage varied; whether the task had sudden spikes or ran steadily.</li>
+            <li><strong>Runtime Efficiency</strong> <code>(runtime_seconds / assigned_memory)</code> - how long the task ran relative to how much memory it used. Helps distinguish long-running tasks from short ones with similar memory usage.</li>
+            <li><strong>Page Cache Ratio</strong> <code>(page_cache_memory / assigned_memory)</code> - how much memory was used for file caching, which indicates how heavily the task reads from disk (I/O intensity proxy).</li>
+        </ul>
+        <p>
+            All 17 features (9 raw + 8 derived) were standardised using <code>StandardScaler</code>
+            so that no single large number would dominate distance calculations. Principal Component
+            Analysis (PCA) confirmed that <strong>memory scale is the primary axis of variation</strong>
+            - PC1 (33% of variance explained) is driven entirely by memory features, with PC2 (21%)
+            capturing utilisation efficiency.
+        </p>
+    </section>
 
-        <div class="card">
-            <ul>
-                <li>Run HDBSCAN on full scaled feature set</li>
-                <li>Stability testing via ARI</li>
-                <li>Cluster profiling by failure rate and resource efficiency</li>
-                <li>Production-ready workload taxonomy</li>
-            </ul>
+    <!-- Modelling -->
+    <section>
+        <h2>How the Grouping Was Done</h2>
+        <p>
+            Six different algorithms were tested and compared. Two simple "baseline" approaches were
+            run first to set a minimum bar - any serious model had to be meaningfully better than these.
+            Four more sophisticated models were then evaluated on the same data using four quality measures.
+        </p>
+        <p>
+            The key quality measures used:
+        </p>
+        <ul>
+            <li><strong>Silhouette Score</strong> - are the groups well-separated? Ranges from -1 (terrible) to 1 (perfect). Above 0.6 is considered excellent.</li>
+            <li><strong>Davies-Bouldin Index</strong> - are the groups compact and far apart from each other? Lower is better. Below 1.0 is excellent.</li>
+            <li><strong>Cluster balance</strong> - does any single group contain an unreasonably large share of all workloads?</li>
+            <li><strong>Stability</strong> - do the same groups appear consistently when the model is run on different random slices of the data?</li>
+        </ul>
+        <p>
+            The modelling algorithms used:
+        </p>
+        <ul>
+            <li><strong>Single Cluster (baseline)</strong> - groups everything into one bucket. Tells us nothing. Included only as a floor comparison.</li>
+            <li><strong>Runtime Quantile (baseline)</strong> - groups tasks purely by how long they run (6 quantile bins). Silhouette of 0.041 - barely better than random. Any real model must beat this convincingly.</li>
+            <li><strong>DBSCAN</strong> <code>(eps=0.203, min_samples=10)</code> - a density-based spatial clustering algorithm that finds groups without needing to specify how many groups to look for. Used here mainly to validate results from HDBSCAN.</li>
+            <li><strong>HDBSCAN</strong> <code>(min_cluster_size=50, min_samples=10)</code> - Hierarchical Density-Based Spatial Clustering of Applications with Noise. A more advanced version of DBSCAN that handles groups of varying density and size, and identifies genuine outliers as noise. Selected as the primary model.</li>
+            <li><strong>KMeans (k=4)</strong> - a classic centroid-based algorithm that requires specifying the number of groups upfront (k=4, determined via elbow method). Used specifically to assign macro-level labels to the 617 HDBSCAN micro-clusters.</li>
+            <li><strong>GMM (k=40)</strong> - Gaussian Mixture Model; a probabilistic model that assigns each task a soft probability of belonging to each group. Eliminated because cluster assignments changed unpredictably across runs - ARI was unstable.</li>
+        </ul>
+        <p>
+            The final pipeline combined two models: HDBSCAN <code>(mcs=50, ms=10)</code> first found
+            617 micro-clusters, then KMeans nearest-centroid assignment consolidated those into 4
+            macro-level archetypes for business recommendations. Stability was validated by re-running
+            the full pipeline 5 times on different random 80% sub-samples - the same 4 archetypes
+            appeared consistently, with an Adjusted Rand Index (ARI) of 0.9975 ± 0.0006.
+        </p>
+    </section>
+
+    <!-- Model Comparison -->
+    <section>
+        <h2>How All 6 Models Compared</h2>
+        <p>
+            The table below shows the results for all 6 models. Higher Silhouette and lower Davies-Bouldin
+            both mean better, more clearly separated groups. The highlighted row is the chosen model.
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Groups Found</th>
+                    <th>Silhouette Score ↑</th>
+                    <th>Davies-Bouldin ↓</th>
+                    <th>Verdict</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="highlight">
+                    <td>HDBSCAN <code>mcs=50, ms=10</code></td>
+                    <td>617 micro-clusters → 4 archetypes</td>
+                    <td>0.874</td>
+                    <td>0.488</td>
+                    <td>✅ Primary model</td>
+                </tr>
+                <tr>
+                    <td>DBSCAN <code>eps=0.203, ms=10</code></td>
+                    <td>687</td>
+                    <td>0.493</td>
+                    <td>0.508</td>
+                    <td>Secondary - validates HDBSCAN</td>
+                </tr>
+                <tr>
+                    <td>KMeans <code>k=4</code></td>
+                    <td>4</td>
+                    <td>0.303</td>
+                    <td>1.127</td>
+                    <td>Macro labelling only</td>
+                </tr>
+                <tr class="muted">
+                    <td>GMM <code>k=40</code></td>
+                    <td>40</td>
+                    <td>0.142</td>
+                    <td>2.070</td>
+                    <td>❌ Eliminated - unstable ARI</td>
+                </tr>
+                <tr>
+                    <td>Runtime Quantile (6 bins, baseline)</td>
+                    <td>6</td>
+                    <td>0.041</td>
+                    <td>93.09</td>
+                    <td>Baseline - very poor</td>
+                </tr>
+                <tr>
+                    <td>Single Cluster <code>k=1</code> (baseline)</td>
+                    <td>1</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>Baseline - no grouping</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            HDBSCAN is significantly better than every other model on every measure, and is the only
+            one that produces the same groupings reliably across repeated runs (99.75% consistency).
+            GMM was eliminated because its group labels changed unpredictably - a fundamental
+            problem for any model intended to be used in practice.
+        </p>
+
+        <img src="../plots/cluster_profile.png"
+             alt="Heatmap showing how each of the 4 workload types differs across all measured features, plus a bar chart showing group size and failure rate.">
+        <p style="font-size:0.85rem; color: var(--gray); margin-top:8px;">
+            Each row is a measured feature; each column is one of the 4 workload types. Green means high, red means low. Notice the CPU rows are completely grey - they carry no signal. The right chart shows how large each group is and how often tasks in it fail.
+        </p>
+    </section>
+
+    <!-- Archetypes -->
+    <section>
+        <h2>The 4 Workload Types Discovered</h2>
+        <p>
+            The machine learning model found 617 fine-grained natural groupings in the data. These
+            were then consolidated into 4 broad types for practical use. Each type has a meaningfully
+            different failure rate, memory usage pattern, and infrastructure implication.
+        </p>
+        <div class="archetype-grid">
+            <div class="arch-card" style="--ac:#e74c3c;">
+                <h4>⚠️ Group 0 - Long-Running, Over-Provisioned</h4>
+                <p>
+                    These tasks run for a long time but consistently use far less memory than they were given
+                    - below-average memory utilisation despite above-average runtime. The allocated memory sits
+                    idle for most of the task's lifetime. Despite this over-provisioning, they fail most often.
+                </p>
+                <div class="arch-stats">
+                    <span class="stat">33.7% of all tasks</span>
+                    <span class="stat" style="color:#dc2626;">31.4% fail - highest risk</span>
+                    <span class="stat">204 micro-clusters</span>
+                </div>
+            </div>
+            <div class="arch-card" style="--ac:#2563eb;">
+                <h4>✅ Group 1 - Memory-Efficient Standard</h4>
+                <p>
+                    The largest group. These tasks use almost exactly as much memory as they were given -
+                    very little is wasted (high <code>memory_utilization_avg</code>, ~+1.0 SD). They occasionally
+                    have spikes in disk-read activity (elevated <code>page_cache_ratio</code>).
+                </p>
+                <div class="arch-stats">
+                    <span class="stat">39.0% of all tasks</span>
+                    <span class="stat" style="color:#d97706;">21.2% fail - moderate risk</span>
+                    <span class="stat">267 micro-clusters</span>
+                </div>
+            </div>
+            <div class="arch-card" style="--ac:#16a34a;">
+                <h4>⚡ Group 2 - Short-Running, Lightweight</h4>
+                <p>
+                    Quick tasks with a small memory footprint. They are the most predictable and consistent
+                    group - lowest noise fraction (7.4%) of all archetypes. Their behaviour barely varies
+                    from task to task, making them preemption-tolerant.
+                </p>
+                <div class="arch-stats">
+                    <span class="stat">25.4% of all tasks</span>
+                    <span class="stat" style="color:#d97706;">14.7% fail - lower risk</span>
+                    <span class="stat">140 micro-clusters</span>
+                </div>
+            </div>
+            <div class="arch-card" style="--ac:#7c3aed;">
+                <h4>🔬 Group 3 - Memory-Intensive Specialist</h4>
+                <p>
+                    Rare but critical. These tasks use enormous amounts of memory - +5.8 standard deviations
+                    above the dataset mean - yet they almost never fail. With only 6 micro-clusters, they
+                    are clearly receiving dedicated, carefully managed infrastructure.
+                </p>
+                <div class="arch-stats">
+                    <span class="stat">1.9% of all tasks</span>
+                    <span class="stat" style="color:#16a34a;">3.3% fail - lowest risk</span>
+                    <span class="stat">6 micro-clusters</span>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <footer>
-        Built by Vinny Babu Manjaly  
-        <br>
-        Machine Learning & Systems Engineering Portfolio Project  
-        <br><br>
-        © 2026 Workload Profiler
-    </footer>
+    <!-- Key Findings -->
+    <section>
+        <h2>Key Findings</h2>
+        <ul class="findings-list">
+            <li class="warn">
+                <strong>CPU is not a workload differentiator - all six CPU features carry zero signal</strong>
+                All six CPU-related features (<code>avg_cpu</code>, <code>max_cpu</code>, <code>req_cpu</code>,
+                <code>avg_cpu_utilization</code>, <code>peak_cpu_utilization</code>, <code>cpu_peak_to_avg_ratio</code>)
+                show a mean z-score of 0.000 across all four archetypes - confirmed by both PCA and
+                the feature heatmap. Memory is the sole primary resource dimension. Any CPU-based
+                autoscaling or scheduling model built on this dataset would have nothing to work with.
+            </li>
+            <li class="warn">
+                <strong>Over-provisioning does not reduce failures - structural causes dominate</strong>
+                Group 0 has below-average <code>memory_utilization_avg</code> despite above-average
+                runtime (classic over-provisioning pattern), yet carries the highest failure rate
+                (31.4%). Resource slack is not preventing failures. The right intervention is memory
+                reclamation - reducing <code>assigned_memory</code> toward actual <code>avg_memory</code>
+                - not further provisioning.
+            </li>
+            <li class="success">
+                <strong>The rarest workloads are the most reliable - a case for dedicated infrastructure</strong>
+                Group 3 (only 1.9% of workloads) has <code>assigned_memory</code> and
+                <code>avg_memory</code> both ~+5.8 SD above the dataset mean, yet the lowest failure
+                rate (3.3%). This pattern is consistent with dedicated node pool placement and no
+                preemption - an approach that should be formalised and protected.
+            </li>
+            <li class="info">
+                <strong>Failure risk varies nearly 10x across archetypes - invisible in aggregated metrics</strong>
+                The failure rate ranges from 3.3% (Group 3) to 31.4% (Group 0). The overall average
+                (23%) masks this 10x spread entirely. No runtime-based baseline, priority label, or
+                single-cluster model would surface it - it only emerges when workloads are grouped
+                by memory behaviour via unsupervised clustering.
+            </li>
+        </ul>
+    </section>
+
+    <!-- Recommendations -->
+    <section>
+        <h2>What Engineers Should Do Differently - Per Workload Type</h2>
+        <p><strong>Specific actions for infrastructure teams based on these findings:</strong></p>
+        <ul>
+            <li>
+                <strong>Group 0 - Long-Running, Over-Provisioned:</strong>
+                Apply memory reclamation - reduce <code>assigned_memory</code> toward actual
+                <code>avg_memory</code> to recover significant cluster capacity. Flag for offer-back
+                mechanisms. Prioritise failure alerting and retry policies over further provisioning;
+                resource slack is not preventing failures.
+            </li>
+            <li>
+                <strong>Group 1 - Memory-Efficient Standard:</strong>
+                Primary candidate for bin-packing (running many tasks together on the same server).
+                High <code>memory_utilization_avg</code> (+1.0 SD) means these workloads fill their
+                allocation without leaving slack. Account for I/O burst events when co-scheduling
+                (above-average <code>page_cache_ratio</code>).
+            </li>
+            <li>
+                <strong>Group 2 - Short-Running, Lightweight:</strong>
+                Ideal for high-throughput bin-packing and dense node scheduling. Lowest noise share
+                (7.4%) makes these the most predictable group for SLA modelling. Preemption-tolerant
+                - can safely be paused and restarted without significant impact.
+            </li>
+            <li>
+                <strong>Group 3 - Memory-Intensive Specialist:</strong>
+                Assign to dedicated high-memory node pools. Do not co-schedule alongside other
+                memory-intensive workloads; do not preempt. Strong SLA commitments are defensible
+                at 3.3% failure rate. The narrow footprint (6 micro-clusters) makes anomaly detection
+                straightforward.
+            </li>
+        </ul>
+
+        <p><strong>What to build next:</strong></p>
+        <ul>
+            <li>
+                <strong>Pre-run supervised workload classifier (highest priority):</strong>
+                The current HDBSCAN model is a post-hoc profiler - it relies on runtime measurements
+                (<code>avg_memory</code>, <code>max_memory</code>) unavailable at submission time.
+                The follow-on project is a supervised classifier trained on the archetype labels
+                using only submission-time features (<code>req_memory</code>,
+                <code>assigned_memory</code>, priority). This would enable real-time scheduling
+                decisions via a Kubernetes mutating admission webhook or equivalent.
+            </li>
+            <li>
+                <strong>Deep-dive into Group 0 sub-clusters:</strong>
+                Group 0 contains 204 HDBSCAN micro-clusters and a 31.4% failure rate. Drilling into
+                the sub-cluster failure distribution - and identifying which micro-clusters carry
+                disproportionate risk - would produce the most immediately actionable SLA insights.
+            </li>
+            <li>
+                <strong>Quantify memory reclamation savings:</strong>
+                Compute the gap between <code>assigned_memory</code> and <code>avg_memory</code>
+                across all Group 0 workloads and convert to a concrete capacity figure (e.g.
+                terabytes recoverable per day). This turns the model findings into a direct
+                cost-saving business case.
+            </li>
+            <li>
+                <strong>Investigate the CPU zero-signal finding:</strong>
+                All six CPU features show mean z-score = 0.000. Determine whether this reflects
+                Borg's memory-first scheduling design, CPU normalisation in the trace, or a data
+                quality issue - before building any CPU-based autoscaling model on this dataset.
+            </li>
+        </ul>
+    </section>
+
+    <!-- Technical Stack -->
+    <section>
+        <h2>Tools and Technologies Used</h2>
+        <ul>
+            <li><strong>Python 3</strong> - the primary programming language throughout</li>
+            <li><strong>pandas, NumPy</strong> - data loading, cleaning, feature engineering, and transformation</li>
+            <li><strong>scikit-learn</strong> - <code>StandardScaler</code>, <code>KMeans</code>, <code>PCA</code>, silhouette score, Davies-Bouldin index, Calinski-Harabasz score, Adjusted Rand Index</li>
+            <li><strong>hdbscan</strong> - primary clustering model (<code>HDBSCAN</code> with <code>min_cluster_size=50, min_samples=10</code>)</li>
+            <li><strong>Matplotlib, Seaborn, Plotly</strong> - static plots (saved to <code>plots/</code>) and interactive charts in the Streamlit app</li>
+            <li><strong>Streamlit</strong> - multi-page interactive web app deployed on Streamlit Community Cloud</li>
+            <li><strong>Jupyter Notebook</strong> - full analysis conducted and documented following the CRISP-DM (Cross-Industry Standard Process for Data Mining) methodology</li>
+            <li><strong>joblib, JSON</strong> - model serialisation; trained <code>KMeans</code> and <code>StandardScaler</code> saved to <code>deployment/</code> for use in the live app</li>
+        </ul>
+    </section>
+
+    <!-- Links -->
+    <section>
+        <h2>Explore the Project</h2>
+        <p>Everything is open-source and publicly available:</p>
+        <ul>
+            <li><a href="https://workloadprofiler.streamlit.app" target="_blank">Live Interactive App</a> - explore the clusters visually, classify a workload yourself, and browse the key findings</li>
+            <li><a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler" target="_blank">GitHub Repository</a> - full source code, notebook, and all project files</li>
+            <li><a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler/blob/master/Workload_Profiler.ipynb" target="_blank">Full Analysis Notebook</a> - the complete step-by-step analysis with code, charts, and written explanations</li>
+        </ul>
+    </section>
+
+</div>
+
+<footer>
+    <p>
+        Workload Profiler - Unsupervised Machine Learning Case Study<br>
+        Built by Vinny Babu Manjaly &nbsp;·&nbsp; Machine Learning and Systems Engineering Portfolio<br>
+        <a href="https://github.com/VinnyBabuManjaly/WorkloadProfiler">GitHub</a> &nbsp;·&nbsp;
+        <a href="https://workloadprofiler.streamlit.app">Live App</a><br><br>
+        © 2026
+    </p>
+</footer>
 
 </body>
 </html>

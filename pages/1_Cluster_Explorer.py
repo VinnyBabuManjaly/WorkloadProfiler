@@ -25,16 +25,21 @@ color_map = {f"Group {g} - {NAMES[g]}": COLORS[g] for g in range(4)}
 # ── Page header ────────────────────────────────────────────────────────────────
 st.title("🔍 Cluster Explorer")
 st.markdown(
-    "Explore how 10,000 sampled workloads distribute across the 4 discovered archetypes "
-    "in the PCA projection space, then drill into any archetype to see its feature profile."
+    "This page lets you **see** the 4 discovered workload archetypes as a visual map - "
+    "and then drill into any single archetype to understand exactly how its memory usage, "
+    "runtime, and efficiency metrics compare to the dataset average.\n\n"
+    "The scatter plot uses **PCA (Principal Component Analysis)** to compress 17 features "
+    "down to 2 dimensions for visualisation. The actual clustering was performed on all 17 "
+    "features - PCA is used here purely for diagnosis and storytelling, not as a model input."
 )
 
 # ── PCA scatter ────────────────────────────────────────────────────────────────
 st.subheader("PCA Projection - 10,000 Sampled Workloads")
 st.caption(
-    "PC1 captures memory scale (33% of variance). "
-    "PC2 captures utilisation efficiency (21%). "
-    "Toggle groups on/off by clicking the legend."
+    "Each dot is a workload. **PC1 (x-axis) = memory scale** - tasks further right use more memory. "
+    "**PC2 (y-axis) = utilisation efficiency** - tasks higher up use their allocation more efficiently. "
+    "PC1 explains 33% of total variance; PC2 explains 21%. "
+    "Toggle archetypes on/off by clicking the legend."
 )
 
 fig = px.scatter(
@@ -61,9 +66,14 @@ st.plotly_chart(fig, width='stretch')
 st.divider()
 
 # ── Archetype drill-down ───────────────────────────────────────────────────────
-st.subheader("Archetype Profile")
+st.subheader("Archetype Deep-Dive")
+st.caption(
+    "Select any archetype to see its full feature profile - how it compares to the dataset average "
+    "across all non-CPU features. Each bar is a mean z-score: positive means above average, "
+    "negative means below. CPU features are excluded (zero signal confirmed across all groups)."
+)
 options = [f"Group {g} - {EMOJIS[g]} {NAMES[g]}" for g in range(4)]
-selected = st.selectbox("Select an archetype:", options)
+selected = st.selectbox("Select an archetype to explore:", options)
 g = int(selected.split(" ")[1])
 
 # Summary metrics
@@ -71,14 +81,16 @@ m1, m2, m3, m4 = st.columns(4)
 m1.metric("Workloads",      f"{int(profiles.loc[g, 'n_workloads']):,}",
           f"{profiles.loc[g, 'pct_workloads']}% of total")
 m2.metric("Failure Rate",   f"{profiles.loc[g, 'failure_rate_pct']}%")
-m3.metric("Micro-Clusters", int(profiles.loc[g, 'n_micro_clusters']))
-m4.metric("Noise Share",    f"{profiles.loc[g, 'noise_pct']}%")
+m3.metric("Micro-Clusters", int(profiles.loc[g, 'n_micro_clusters']),
+          help="Number of HDBSCAN micro-clusters that map to this macro archetype.")
+m4.metric("Noise Share",    f"{profiles.loc[g, 'noise_pct']}%",
+          help="% of workloads in this archetype that were flagged as HDBSCAN noise points.")
 
-st.markdown(f"**Feature profile for Group {g} - {NAMES[g]}**")
+st.markdown(f"**Standardised feature profile - Group {g}: {NAMES[g]}**")
 st.caption(
-    "Bars show mean standardised feature value (z-score). "
-    "Positive = above dataset average. Negative = below. "
-    "CPU features are excluded (zero discriminative signal)."
+    "Mean z-score per feature (standardised against the full dataset). "
+    "Bars above zero = this group is above average on that feature. "
+    "Bars below zero = below average. CPU features are omitted - confirmed zero signal."
 )
 
 # Drop zero-signal CPU features
@@ -108,6 +120,11 @@ st.plotly_chart(fig2, width='stretch')
 # ── Side-by-side group comparison ─────────────────────────────────────────────
 st.divider()
 st.subheader("All Archetypes - Size and Failure Rate")
+st.caption(
+    "How large is each group, and how often do tasks in it fail? "
+    "The gap between Group 0 (31.4%) and Group 3 (3.3%) is nearly 10x - "
+    "invisible in any aggregate metric, only surfaced by the clustering."
+)
 comp_col1, comp_col2 = st.columns(2)
 
 with comp_col1:
