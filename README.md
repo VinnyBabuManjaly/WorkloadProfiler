@@ -14,7 +14,7 @@ Large compute clusters treat every workload identically - same memory allocation
 
 ## Rationale
 
-Large compute clusters - whether Google Borg, Kubernetes, or cloud-hosted fleets - run hundreds of thousands of tasks simultaneously with no way to tell them apart. Every task gets the same scheduling rules and memory allocation regardless of how it actually behaves. The result: memory wasted on idle tasks, a 23% overall failure rate that hides a 10x spread across task types, and no actionable basis for differentiated scheduling. Understanding workload types is the prerequisite for any meaningful improvement in resource efficiency, failure reduction, or SLA design.
+Large compute clusters - whether Google Borg, Kubernetes, or cloud-hosted fleets - provide coarse scheduling primitives: priority levels, resource requests, and instance types. But these are manually configured at submission time and do not reflect how workloads actually behave at runtime. The infrastructure has no automatic mechanism to discover that a long-running over-provisioned job and a short-burst lightweight job need fundamentally different handling. The result: memory wasted on idle tasks, a 23% overall failure rate that hides a 10x spread across task types, and no actionable basis for differentiated scheduling. Understanding workload types from actual behaviour is the prerequisite for any meaningful improvement in resource efficiency, failure reduction, or SLA design.
 
 ---
 

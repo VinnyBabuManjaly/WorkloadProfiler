@@ -318,10 +318,13 @@
             cloud (AWS, Azure, GCP), or via container orchestration platforms like Kubernetes - faces
             the same challenge. Hundreds of thousands of tasks compete for the same pool of servers:
             machine learning training jobs, web-serving requests, batch analytics, ETL pipelines, and
-            database queries all run side by side. <strong>The infrastructure, by default, cannot tell
-            them apart.</strong> Every task gets allocated memory and scheduled by the same rules,
-            regardless of whether it actually needs them. The result is a cluster that is simultaneously
-            over-committed in some places and wastefully idle in others.
+            database queries all run side by side. These systems provide coarse scheduling primitives -
+            priority levels, resource requests, instance types - but these are <strong>manually
+            configured at submission time</strong> and do not reflect how workloads actually behave
+            at runtime. The infrastructure has no automatic mechanism to discover that a long-running
+            over-provisioned job and a short-burst lightweight job need fundamentally different
+            handling. The result is a cluster that is simultaneously over-committed in some places
+            and wastefully idle in others.
         </p>
         <p>
             This project uses Google's Borg cluster trace - one of the largest publicly available
