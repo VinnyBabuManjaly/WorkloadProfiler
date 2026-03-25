@@ -1,24 +1,61 @@
 # Workload Profiler
 
-Unsupervised machine learning project that automatically discovers 4 distinct workload archetypes in Google's Borg cluster - revealing hidden failure patterns and turning them into concrete infrastructure decisions.
-
 **[📓 Full Analysis Notebook](./Workload_Profiler.ipynb)** &nbsp;·&nbsp; **[📊 Live App](https://workloadprofiler.streamlit.app)** &nbsp;·&nbsp; **[📄 Final Report](https://vinnybabumanjaly.github.io/WorkloadProfiler/)**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ---
 
-## Business Problem
+## Executive Summary
 
-Large compute clusters - whether Google Borg, Kubernetes, or cloud-hosted fleets - run hundreds of thousands of tasks simultaneously with no way to tell them apart. Every task gets the same scheduling rules and memory allocation regardless of how it actually behaves. The result: memory wasted on idle tasks, a 23% overall failure rate that hides a 10x spread across task types, and no actionable basis for differentiated scheduling.
+Large compute clusters treat every workload identically - same memory allocation, same scheduling rules - despite wildly different behaviour. This project applied unsupervised machine learning (HDBSCAN + KMeans) to 405,894 real tasks from Google's Borg cluster to automatically discover 4 distinct workload archetypes from resource usage patterns alone, with no manual labelling. The result: a 10x failure rate spread revealed (3.3% to 31.4%), memory reclamation targets identified for the highest-risk group, and concrete scheduling recommendations for each archetype. The primary model achieves a Silhouette Score of 0.874 and ARI stability of 0.9975 ± 0.0006.
 
-**Core question:** Can a machine learning model automatically discover what type of workload a task is - purely from how it uses resources - and use that to reduce waste, predict failures, and guide scheduling decisions?
+---
+
+## Rationale
+
+Large compute clusters - whether Google Borg, Kubernetes, or cloud-hosted fleets - run hundreds of thousands of tasks simultaneously with no way to tell them apart. Every task gets the same scheduling rules and memory allocation regardless of how it actually behaves. The result: memory wasted on idle tasks, a 23% overall failure rate that hides a 10x spread across task types, and no actionable basis for differentiated scheduling. Understanding workload types is the prerequisite for any meaningful improvement in resource efficiency, failure reduction, or SLA design.
+
+---
+
+## Research Question
+
+Can a machine learning model automatically discover what type of workload a task is - purely from how it uses resources - and use that to reduce waste, predict failures, and guide scheduling decisions?
+
+---
+
+## Data
+
+The dataset is the **Google 2019 Cluster Trace** (`borg_traces_data.csv`, 405,894 rows, 34 columns), sourced via [Kaggle Hub](https://www.kaggle.com/datasets/google/google-cluster-sample). It records real task execution from Google's Borg cluster manager - memory allocations, CPU usage, runtime, failure status, and more. This is the authoritative public benchmark for large-scale workload analysis; a single well-documented source was used intentionally over combining partial or synthetic alternatives.
+
+A **30% random sample (121,535 rows, `random_state=42`)** was used for modelling. Stability was validated by re-running the full pipeline 5 times on different random 80% sub-samples - confirming findings hold across any slice of the data (ARI 0.9975 ± 0.0006).
+
+---
+
+## Data Preparation
+
+**Cleaning:**
+- Removed records where `end_time <= start_time` (invalid runtime)
+- Dropped rows missing `assigned_memory`, `average_usage`, `maximum_usage`, or `resource_request`
+- Filled `vertical_scaling` with 0 (absence = no scaling applied); filled `scheduler` with mode value
+- Capped all CPU, memory, and runtime values at the 1st–99th percentile to remove extreme outliers without data loss
+
+**Feature extraction and encoding:**
+- Parsed JSON string columns (`average_usage`, `maximum_usage`, `resource_request`) to extract numeric fields: `avg_cpu`, `avg_memory`, `max_cpu`, `max_memory`, `req_cpu`, `req_memory`
+- Computed `runtime_seconds` from `start_time` and `end_time` timestamps
+- Engineered 8 derived ratio features (memory utilisation, CPU burstiness, overprovisioning ratio - see Approach below)
+
+**Scaling:**
+`StandardScaler` applied to all 17 features before clustering. Distance-based algorithms are sensitive to feature magnitude; standardisation ensures no single large-valued column dominates. The scaler was fit on the working sample only.
+
+**Train/test split:**
+Unsupervised clustering does not use labelled train/test splits. The equivalent validation was: (1) a 30% random sample for modelling, and (2) ARI stability runs across 5 random 80% sub-samples with a threshold of ARI > 0.85.
 
 ---
 
 ## Approach
 
-The project follows the **CRISP-DM** data science methodology applied to the **Google 2019 Cluster Trace** (405,894 workload instances). Six models were built and compared:
+The project follows the **CRISP-DM** data science methodology. The learning type is **unsupervised** - no labels exist in the data; the model discovers workload types purely from resource usage patterns. The output is a cluster label (0–3) assigned to each workload instance, representing its archetype. Six models were built and compared:
 
 | Model | Role |
 | --- | --- |
@@ -54,7 +91,7 @@ The project follows the **CRISP-DM** data science methodology applied to the **G
 
 HDBSCAN discovered **617 fine-grained micro-clusters**, consolidated into **4 workload archetypes** via KMeans nearest-centroid assignment. Each archetype has a distinct memory profile, failure rate, and operational implication.
 
-![HDBSCAN evaluation dashboard — Silhouette 0.874, Davies-Bouldin 0.488, 617 micro-clusters, 12.4% noise](plots/clustering_eval_hdbscan_mcs50_ms10.png)
+![HDBSCAN evaluation dashboard - Silhouette 0.874, Davies-Bouldin 0.488, 617 micro-clusters, 12.4% noise](plots/clustering_eval_hdbscan_mcs50_ms10.png)
 
 | Archetype | Share | Failure Rate | Key Characteristic |
 | --- | --- | --- | --- |
@@ -63,7 +100,7 @@ HDBSCAN discovered **617 fine-grained micro-clusters**, consolidated into **4 wo
 | ⚡ Group 2 - Short-Running Lightweight | 25.4% | 14.7% | Very short runtime (−1.56 SD), most consistent behaviour of any group |
 | 🔬 Group 3 - Memory-Intensive Specialist | 1.9% | **3.3%** | Extreme memory scale (+5.8 SD above mean), near-perfect reliability |
 
-![4 workload archetypes — memory profiles, failure rates, and cluster separation](plots/macro_cluster_overview.png)
+![4 workload archetypes - memory profiles, failure rates, and cluster separation](plots/macro_cluster_overview.png)
 
 **Novel findings beyond original objectives:**
 
@@ -131,6 +168,25 @@ Python 3 · pandas · NumPy · scikit-learn · hdbscan · Matplotlib · Seaborn 
 
 ---
 
+## Outline of Project
+
+- [Full Analysis Notebook](./Workload_Profiler.ipynb) - CRISP-DM end-to-end: data preparation, 6 models, evaluation, deployment
+- [Live Interactive App](https://workloadprofiler.streamlit.app) - Cluster Explorer, Workload Classifier, Key Findings
+- [Final Report](https://vinnybabumanjaly.github.io/WorkloadProfiler/) - GitHub Pages summary
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+---
+
+## Contact and Further Information
+
+**Vinny Babu**
+
+- GitHub: [VinnyBabu](https://github.com/VinnyBabuManjaly)
+- Project repository: [WorkloadProfiler](https://github.com/VinnyBabuManjaly/WorkloadProfiler)
+
+For questions about the methodology, dataset, or findings, please open an issue on the repository.

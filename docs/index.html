@@ -370,14 +370,36 @@
     <section>
         <h2>The Data and What Was Measured</h2>
         <p>
-            The dataset comes from Google's <strong>Borg</strong> system - the internal cluster manager
-            that schedules and runs tasks across Google's data centres. The 2019 trace records what
-            actually happened: how much memory each task used, how long it ran, whether it failed, and more.
+            The dataset is the <strong>Google 2019 Cluster Trace</strong> - 405,894 rows, 34 columns -
+            sourced from <a href="https://www.kaggle.com/datasets/google/google-cluster-sample" target="_blank">Kaggle Hub</a>
+            (Google Research). It records real task execution from Google's internal <strong>Borg</strong>
+            cluster manager: how much memory each task was allocated, how much it actually used, how long
+            it ran, whether it failed, and more. This is the standard public benchmark for large-scale
+            workload analysis. A single authoritative source was used intentionally - combining partial
+            or synthetic alternatives would introduce inconsistencies into a dataset that already captures
+            the full diversity of a production cluster at scale.
         </p>
         <p>
-            To keep things computationally manageable, a random 30% sample of 121,535 records was used
-            for modelling. On top of the 9 raw measurements already in the data, 8 new derived features
-            were engineered to better capture how efficiently each task uses its resources:
+            A random <strong>30% sample (121,535 records, fixed seed)</strong> was used for all modelling
+            to keep computation manageable. The findings were validated by re-running the full pipeline
+            5 times on different random 80% sub-samples - the same 4 archetypes appeared every time
+            (ARI 0.9975 ± 0.0006), confirming the results are not an artefact of the specific sample chosen.
+        </p>
+
+        <h3 style="margin-top:28px; font-size:1rem;">How the Data Was Cleaned</h3>
+        <p>
+            Before modelling, invalid rows (end time ≤ start time) and rows missing core memory or
+            usage fields were dropped. Three columns stored as JSON strings were parsed to extract
+            numeric values. All CPU, memory, and runtime features were capped at the 1st–99th
+            percentile to prevent extreme outliers from distorting distance calculations.
+            <code>runtime_seconds</code> was derived from the timestamp difference between task
+            start and end.
+        </p>
+
+        <h3 style="margin-top:28px; font-size:1rem;">Features Used for Clustering</h3>
+        <p>
+            On top of the cleaned raw measurements, 8 new derived features were engineered to better
+            capture how efficiently each task uses its resources:
         </p>
         <ul>
             <li><strong>Memory Overprovisioning Ratio</strong> <code>(assigned_memory / req_memory)</code> - how much memory was allocated compared to how much was actually requested. High values mean the task was given far more than it asked for.</li>
@@ -395,6 +417,13 @@
             Analysis (PCA) confirmed that <strong>memory scale is the primary axis of variation</strong>
             - PC1 (33% of variance explained) is driven entirely by memory features, with PC2 (21%)
             capturing utilisation efficiency.
+        </p>
+        <p>
+            <strong>Note on train/test split:</strong> Unsupervised clustering does not use labelled
+            train/test splits in the traditional sense - there is no ground truth to predict. The
+            equivalent validation was stability testing: re-running the full pipeline 5 times on
+            different random 80% sub-samples and measuring consistency via Adjusted Rand Index (ARI).
+            An ARI above 0.85 was the acceptance threshold; the result was 0.9975 ± 0.0006.
         </p>
     </section>
 
@@ -419,12 +448,12 @@
             The modelling algorithms used:
         </p>
         <ul>
-            <li><strong>Single Cluster (baseline)</strong> - groups everything into one bucket. Tells us nothing. Included only as a floor comparison.</li>
-            <li><strong>Runtime Quantile (baseline)</strong> - groups tasks purely by how long they run (6 quantile bins). Silhouette of 0.041 - barely better than random. Any real model must beat this convincingly.</li>
-            <li><strong>DBSCAN</strong> <code>(eps=0.203, min_samples=10)</code> - a density-based spatial clustering algorithm that finds groups without needing to specify how many groups to look for. Used here mainly to validate results from HDBSCAN.</li>
-            <li><strong>HDBSCAN</strong> <code>(min_cluster_size=50, min_samples=10)</code> - Hierarchical Density-Based Spatial Clustering of Applications with Noise. A more advanced version of DBSCAN that handles groups of varying density and size, and identifies genuine outliers as noise. Selected as the primary model.</li>
-            <li><strong>KMeans (k=4)</strong> - a classic centroid-based algorithm that requires specifying the number of groups upfront (k=4, determined via elbow method). Used specifically to assign macro-level labels to the 617 HDBSCAN micro-clusters.</li>
-            <li><strong>GMM (k=40)</strong> - Gaussian Mixture Model; a probabilistic model that assigns each task a soft probability of belonging to each group. Eliminated because cluster assignments changed unpredictably across runs - ARI was unstable.</li>
+            <li><strong>Single Cluster (baseline)</strong> - everything in one bucket; sets the floor.</li>
+            <li><strong>Runtime Quantile (baseline)</strong> - 6 bins by task duration; Silhouette 0.041.</li>
+            <li><strong>DBSCAN</strong> <code>(eps=0.203, ms=10)</code> - density-based; eps tuned via k-distance graph. Used as a validation cross-check against HDBSCAN.</li>
+            <li><strong>HDBSCAN</strong> <code>(mcs=50, ms=10)</code> - hierarchical density clustering; handles variable-density groups and flags genuine outliers as noise. <strong>Primary model.</strong></li>
+            <li><strong>KMeans (k=4)</strong> - k selected via elbow method; used to assign macro-level labels to the 617 HDBSCAN micro-clusters.</li>
+            <li><strong>GMM (k=40)</strong> - k selected via BIC minimisation; eliminated because cluster assignments were unstable across runs.</li>
         </ul>
         <p>
             The final pipeline combined two models: HDBSCAN <code>(mcs=50, ms=10)</code> first found
