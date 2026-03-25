@@ -24,10 +24,7 @@ WorkloadProfiler/
 │       └── borg_traces_data.csv     # Raw dataset (313 MB, do not modify)
 ├── plots/                           # All exported visualisations (PNG)
 ├── docs/
-│   ├── index.html                   # Project summary page
-│   └── additional_docs/
-│       ├── questions.md             # Open questions for stakeholders
-│       └── other_modelling_Techiniques.ipynb  # Alternative model experiments
+│   └── index.html                   # Project summary page (GitHub Pages)
 └── README.md                        # Full project documentation
 ```
 

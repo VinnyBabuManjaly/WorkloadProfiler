@@ -231,12 +231,13 @@
         <h1>Workload Profiler</h1>
         <p class="hero-subtitle">Unsupervised Workload Archetype Discovery on Google Borg Cluster Traces</p>
         <p>
-            Applied <strong>HDBSCAN</strong> and <strong>KMeans</strong> in a two-stage pipeline to cluster
-            405,894 workload instances from Google's 2019 Borg trace data - surfacing 4 operationally
-            distinct archetypes across memory utilisation, overprovisioning, and runtime efficiency dimensions.
-            Achieves a Silhouette Score of <strong>0.874</strong> with an ARI of <strong>0.9975 ± 0.0006</strong>
-            across stability runs, translating cluster findings directly into scheduling, bin-packing, and
-            memory reclamation recommendations for infrastructure teams.
+            Every large compute cluster has a hidden problem: nobody knows what types of workloads are
+            actually running. This project applied <strong>HDBSCAN</strong> and <strong>KMeans</strong>
+            to <strong>405,894 real Google Borg tasks</strong> - automatically uncovering 4 operationally
+            distinct archetypes from raw resource patterns, with no manual labelling. The result: a 10x
+            failure rate spread revealed, memory reclamation targets identified, and concrete scheduling
+            actions for each workload type. Silhouette Score <strong>0.874</strong> &nbsp;·&nbsp;
+            ARI <strong>0.9975 ± 0.0006</strong>.
         </p>
         <div class="badges">
             <span>HDBSCAN · KMeans · GMM · DBSCAN</span>
