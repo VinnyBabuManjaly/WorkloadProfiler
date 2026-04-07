@@ -72,7 +72,7 @@ for g, col in enumerate(cols):
         f"border-left:5px solid {COLORS[g]};"
         f"padding:16px;"
         f"border-radius:6px;"
-        f"height:240px;"
+        f"min-height:240px;"
         f"'>"
         f"<b style='font-size:15px;'>{EMOJIS[g]} Group {g}</b><br>"
         f"<span style='font-size:13px;color:{COLORS[g]};'><b>{NAMES[g]}</b></span><br><br>"
